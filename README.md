@@ -29,7 +29,7 @@ ai-dev-tools/
 ├── agents/       Specialized subagents — discrete units with defined I/O contracts
 ├── commands/     Slash commands — type /name in Claude Code to run them
 ├── prompts/      Prompt templates — copy/paste or pass directly to an agent
-├── scripts/      Shell/PowerShell utility scripts (GitHub CLI, token auditing, etc.)
+├── scripts/      Node.js utility scripts (GitHub CLI, token auditing, etc.)
 ├── skills/       Stack conventions — loaded automatically by the agent
 └── workspace/    Config files to copy to your dev root during setup
     ├── CLAUDE.md           Claude Code workspace instructions
@@ -100,25 +100,16 @@ The script:
 |---|---|
 | `code-builder.md` | Implements a change with the smallest correct patch |
 | `code-reviewer.md` | Reviews code — bugs, regressions, risks, missing tests |
-| `doc-builder.md` | Writes documentation from repo/branch context |
-| `pr-analyst.md` | Reads a PR diff and produces a structured review summary |
 | `ticket-analyst.md` | Turns a raw issue into a concise implementation brief |
-| `impact-analyst.md` | Cross-repo impact analysis — determines blast radius of a change |
 
 ### Commands
 
 | File | Type in Claude Code | What it does |
 |---|---|---|
-| `ac-check.md` | `/ac-check <id>` | Validates that existing code covers the acceptance criteria of a GitHub issue |
-| `bug-seeker.md` | `/bug-seeker [id]` | Interactive bug investigation — issue, logs, code, diagnostic report saved to `~/dev/bug-reports/` |
-| `demo-prep.md` | `/demo-prep` | Transforms a feature description into slide-ready content for sprint demos |
 | `pr-review.md` | `/pr-review` | Records PR review comments and writes a review file to `~/dev/pr-reviews/` |
 | `pr-fixer.md` | `/pr-fixer` | Applies blocking fixes from an existing PR review file |
-| `issue-notes.md` | `/issue-notes [id]` | Generates a technical overview and posts it as a GitHub issue comment |
 | `issue-code-generation.md` | `/issue-code-generation [id]` | Generates code for an issue via `code-builder`, then validates AC coverage via `code-reviewer` |
-| `check-releases.md` | `/check-releases` | Lists repos with changes on main not yet in release |
-| `update-repos.md` | `/update-repos [branch]` | Pull latest changes on all configured repos |
-| `sync-ai-tools.md` | `/sync-ai-tools` | Sync commands and agents from ai-dev-tools to `~/.claude` |
+| `bug-seeker.md` | `/bug-seeker [id]` | Interactive bug investigation — issue, logs, code, diagnostic report saved to `~/dev/bug-reports/` |
 | `token-audit.md` | `/token-audit [days]` | Audit Claude Code token consumption — weekly trend, model breakdown, command adoption |
 
 ### Prompts
@@ -127,17 +118,12 @@ The script:
 |---|---|
 | `ticket-prompt.md` | Full workflow to implement an issue |
 | `pr-prompt.md` | Full workflow to review a PR |
-| `doc-redaction.md` | Write documentation from a repo/branch context |
 
 ### Skills
 
 | File | What it does |
 |---|---|
 | `branch-pr.md` | Branch, commit, and PR naming conventions |
-| `git-conventions.md` | Commit message format, branching strategy, merge rules |
-| `dotnet-repository.md` | C# Repository/Handler/Controller patterns (Dapper) |
-| `vue-ui.md` | Vue UI conventions — component structure, store, i18n |
-| `vue-service.md` | Vuex service and store conventions |
 | `wiki-first.md` | Forces a wiki/docs lookup before implementing any business logic |
 | `scope-guard.md` | Keeps changes inside the authorized file perimeter before any modification |
 
@@ -147,14 +133,8 @@ The script:
 |---|---|
 | `onboarding.mjs` | Sets up the workspace — copies config, sets up junctions |
 | `sync-claude.mjs` | Syncs commands and agents from ai-dev-tools to the local Claude Code environment |
-| `update-repos.mjs` | Pulls latest changes on all configured repos |
-| `gh-my-issues.mjs` | Lists GitHub issues assigned to the current user |
 | `gh-get-issue.mjs` | Fetches a GitHub issue by number and outputs its fields as JSON |
-| `gh-get-pr.mjs` | Fetches a GitHub PR by number or by source branch |
-| `gh-get-pr-threads.mjs` | Fetches reviewer comment threads for a PR |
-| `gh-post-comment.mjs` | Posts a comment to a GitHub issue |
 | `token-audit.mjs` | Aggregates token usage from Claude Code JSONL session files |
-| `list-files.mjs` | Lists files in a directory recursively, numbered from 1 |
 
 ---
 
