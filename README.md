@@ -164,5 +164,5 @@ Create `commands/your-command.md`. Specify which agents it chains, in what order
 
 | Repo | What it demonstrates |
 |---|---|
-| [`autonomous-dev-loop`](https://github.com/koydas/autonomous-dev-loop) | Fully autonomous GitHub-native SDLC — the pipeline this toolbox feeds into. Issue → validator → coder → PR → reviewer → human merge gate, running on Qwen3-32B via Groq. |
-| [`fullstack-pilot`](https://github.com/koydas/fullstack-pilot) | Polyglot multi-service stack with GitOps, ADRs, Mermaid architecture diagrams, and AI agent integration. Staff/Architect positioning artifact. |
+| [`autonomous-dev-loop`](https://github.com/koydas/autonomous-dev-loop) | Fully autonomous GitHub-native SDLC — Issue → AI coder → PR → AI reviewer → iterative loop → human merge gate. Groq-backed, GitHub Actions orchestration, prompt files loaded at runtime. |
+| [`fullstack-pilot`](https://github.com/koydas/fullstack-pilot) | Polyglot multi-service stack: React/Vite, Node/Express, Flask, .NET 8 — across MongoDB, PostgreSQL, and SQL Server. Includes CI/CD workflows, ADRs, and a Mermaid architecture diagram. |
