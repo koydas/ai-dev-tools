@@ -1,174 +1,36 @@
 # ai-dev-tools
 
-A production-grade Claude Code toolbox for AI-native development workflows — commands, agents, skills, prompts, and scripts designed to compress the full SDLC cycle.
-
+A Claude Code toolbox for AI-native development — commands, agents, skills, and scripts designed to compress the full SDLC cycle.
 Built and maintained using the workflows it describes.
 
----
-
-## Project status
-
-This README is the first project artifact and serves as the blueprint for the repository. The directories, commands, agents, skills, prompts, and scripts described below are intended to be added incrementally through dedicated issues.
+![WIP — being built in the open](https://img.shields.io/badge/status-WIP%20%E2%80%94%20being%20built%20in%20the%20open-yellow)
+![Node ≥ 20](https://img.shields.io/badge/node-%E2%89%A520-lightgrey)
+![Claude Code](https://img.shields.io/badge/Claude%20Code-required-blue)
 
 ---
 
-## What this repo demonstrates
+## How it works
 
-- **Slash commands** that orchestrate multi-step workflows from a single invocation
-- **Specialized subagents** with explicit input/output contracts, chainable across pipelines
-- **Stack conventions (skills)** loaded automatically to give the agent persistent domain context
-- **GitHub CLI integration** — ticket fetch, PR operations, comment posting, all scriptable
-- **Onboarding automation** — clone, configure, and sync a new machine in one script
-
----
-
-## Structure
+The goal is a development loop where the human is a **gate**, not a relay. Commands orchestrate agents; agents do one thing well; skills shape how they reason.
 
 ```
-ai-dev-tools/
-├── agents/       Specialized subagents — discrete units with defined I/O contracts
-├── commands/     Slash commands — type /name in Claude Code to run them
-├── prompts/      Prompt templates — copy/paste or pass directly to an agent
-├── scripts/      Shell/PowerShell utility scripts (GitHub CLI, token auditing, etc.)
-├── skills/       Stack conventions — loaded automatically by the agent
-└── workspace/    Config files to copy to your dev root during setup
-    ├── CLAUDE.md           Claude Code workspace instructions
-    └── .claude/
-        └── CLAUDE.md       Claude Code execution rules
+GitHub issue → /issue-code-generation → ticket-analyst → code-builder → code-reviewer → human merge gate
+    input            command                 agent            agent           agent          approval
 ```
 
----
+> See [`autonomous-dev-loop`](https://github.com/koydas/autonomous-dev-loop) for the fully automated version of this pattern — Issue → validator → coder → PR → reviewer → human merge gate, running on Qwen3-32B via Groq.
 
-## Getting Started
+### Skills / Agents / Commands
 
-### Prerequisites
-
-- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) installed
-- [GitHub CLI](https://cli.github.com/) (`gh`) available in your PATH and authenticated
-- Git available in your PATH
-
-### 1. Clone this repo
-
-```bash
-git clone https://github.com/koydas/ai-dev-tools ~/dev/ai-dev-tools
-cd ~/dev/ai-dev-tools
-```
-
-### 2. Run the setup script
-
-```bash
-node scripts/onboarding.mjs
-```
-
-This copies workspace config, sets up the skills junction, and deploys commands, agents, and scripts to their target locations.
-
-### 3. Fill in your credentials
-
-The script creates `.env` from the template. Open it and fill in your keys:
-
-```env
-gh_token=<GitHub PAT — scope: repo, read:org>
-```
-
-> `.env` is git-ignored and never committed.
-
----
-
-## Keeping your environment in sync
-
-After pulling changes, run the sync script:
-
-```bash
-node ~/dev/tools/sync-claude.mjs
-```
-
-The script:
-
-- Copies new and updated files from `commands/` and `agents/` to `~/.claude/`
-- Verifies the `skills/` junction is intact
-- Reports what was copied, updated, already up-to-date, or extra
-
-> **New machine?** Use `scripts/onboarding.mjs` instead — it covers the full setup.
-
----
-
-## Reference
-
-### Agents
-
-| File | What it does |
-|---|---|
-| `code-builder.md` | Implements a change with the smallest correct patch |
-| `code-reviewer.md` | Reviews code — bugs, regressions, risks, missing tests |
-| `doc-builder.md` | Writes documentation from repo/branch context |
-| `pr-analyst.md` | Reads a PR diff and produces a structured review summary |
-| `ticket-analyst.md` | Turns a raw issue into a concise implementation brief |
-| `impact-analyst.md` | Cross-repo impact analysis — determines blast radius of a change |
-
-### Commands
-
-| File | Type in Claude Code | What it does |
+| Primitive | Role | How it works |
 |---|---|---|
-| `ac-check.md` | `/ac-check <id>` | Validates that existing code covers the acceptance criteria of a GitHub issue |
-| `bug-seeker.md` | `/bug-seeker [id]` | Interactive bug investigation — issue, logs, code, diagnostic report saved to `~/dev/bug-reports/` |
-| `demo-prep.md` | `/demo-prep` | Transforms a feature description into slide-ready content for sprint demos |
-| `pr-review.md` | `/pr-review` | Records PR review comments and writes a review file to `~/dev/pr-reviews/` |
-| `pr-fixer.md` | `/pr-fixer` | Applies blocking fixes from an existing PR review file |
-| `issue-notes.md` | `/issue-notes [id]` | Generates a technical overview and posts it as a GitHub issue comment |
-| `issue-code-generation.md` | `/issue-code-generation [id]` | Generates code for an issue via `code-builder`, then validates AC coverage via `code-reviewer` |
-| `check-releases.md` | `/check-releases` | Lists repos with changes on main not yet in release |
-| `update-repos.md` | `/update-repos [branch]` | Pull latest changes on all configured repos |
-| `sync-ai-tools.md` | `/sync-ai-tools` | Sync commands and agents from ai-dev-tools to `~/.claude` |
-| `token-audit.md` | `/token-audit [days]` | Audit Claude Code token consumption — weekly trend, model breakdown, command adoption |
+| **Skills** | Passive context | Conventions, patterns, rules loaded automatically via `CLAUDE.md`. Shape *how* the agent reasons without being called explicitly. |
+| **Agents** | Execution units | Discrete, specialized, explicit I/O contracts. Do one thing well. Chainable via structured `### Status / ### Handoff` blocks. |
+| **Commands** | Orchestrators | Chain agents, invoke scripts, manage workflow state. Type `/name` in Claude Code to trigger a full pipeline. |
 
-### Prompts
+### Output contract (all agents)
 
-| File | What it does |
-|---|---|
-| `ticket-prompt.md` | Full workflow to implement an issue |
-| `pr-prompt.md` | Full workflow to review a PR |
-| `doc-redaction.md` | Write documentation from a repo/branch context |
-
-### Skills
-
-| File | What it does |
-|---|---|
-| `branch-pr.md` | Branch, commit, and PR naming conventions |
-| `git-conventions.md` | Commit message format, branching strategy, merge rules |
-| `dotnet-repository.md` | C# Repository/Handler/Controller patterns (Dapper) |
-| `vue-ui.md` | Vue UI conventions — component structure, store, i18n |
-| `vue-service.md` | Vuex service and store conventions |
-| `wiki-first.md` | Forces a wiki/docs lookup before implementing any business logic |
-| `scope-guard.md` | Keeps changes inside the authorized file perimeter before any modification |
-
-### Scripts
-
-| File | What it does |
-|---|---|
-| `onboarding.mjs` | Sets up the workspace — copies config, sets up junctions |
-| `sync-claude.mjs` | Syncs commands and agents from ai-dev-tools to the local Claude Code environment |
-| `update-repos.mjs` | Pulls latest changes on all configured repos |
-| `gh-my-issues.mjs` | Lists GitHub issues assigned to the current user |
-| `gh-get-issue.mjs` | Fetches a GitHub issue by number and outputs its fields as JSON |
-| `gh-get-pr.mjs` | Fetches a GitHub PR by number or by source branch |
-| `gh-get-pr-threads.mjs` | Fetches reviewer comment threads for a PR |
-| `gh-post-comment.mjs` | Posts a comment to a GitHub issue |
-| `token-audit.mjs` | Aggregates token usage from Claude Code JSONL session files |
-| `list-files.mjs` | Lists files in a directory recursively, numbered from 1 |
-
----
-
-## Design Philosophy
-
-### Commands vs Agents vs Skills
-
-- **Skills** are passive context — conventions, patterns, rules the agent loads automatically before acting. They shape *how* the agent works.
-- **Agents** are active execution units — discrete, specialized, with explicit input/output contracts. They do *one thing well*.
-- **Commands** are orchestrators — they chain agents, call scripts, and manage state across a workflow. They are the entry point.
-
-### Output contracts
-
-Every agent produces a structured output block:
+Every agent produces a structured output block — this makes them chainable without human interpretation between steps:
 
 ```markdown
 ### Status
@@ -178,22 +40,129 @@ Every agent produces a structured output block:
 ...findings, code, analysis...
 
 ### Handoff
-Next step and what to pass to it
+Next step and what to pass forward
 ```
-
-This makes agents chainable without human interpretation between steps.
-
-### Why this structure
-
-The goal is a development loop where the human is a **gate**, not a **relay**. The agent handles investigation, drafting, and validation. The human approves or redirects.
-
-> See [`autonomous-dev-loop`](https://github.com/koydas/autonomous-dev-loop) for the fully automated version of this pattern — Issue → PR → Review → Auto-Fix → human merge gate.
 
 ---
 
-## Related repos
+## Reference
+
+### Commands
+
+| Invoke | Agents used | What it does |
+|---|---|---|
+| `/issue-code-generation [id]` | `ticket-analyst` → `code-builder` → `code-reviewer` | Full issue → code → AC validation pipeline |
+| `/pr-review` | `pr-analyst` | Review PR, write structured report to `~/dev/pr-reviews/` |
+| `/pr-fixer` | `code-builder` | Apply blocking fixes from an existing review file |
+| `/ac-check [id]` | `code-reviewer` | Validate code coverage against issue acceptance criteria |
+| `/bug-seeker [id]` | — | Interactive investigation — issue, logs, code → diagnostic report |
+| `/issue-notes [id]` | — | Generate technical overview, post as GitHub issue comment |
+| `/demo-prep` | — | Feature description → slide-ready sprint demo content |
+| `/token-audit [days]` | — | Audit Claude Code token usage — trends, model breakdown, command adoption |
+| `/check-releases` | — | List repos with main changes not yet in a release |
+| `/sync-ai-tools` | — | Sync commands and agents from this repo to `~/.claude` |
+
+### Agents
+
+| Agent | Input | Output |
+|---|---|---|
+| `ticket-analyst` | Raw GitHub issue | Concise implementation brief |
+| `code-builder` | Implementation brief | Smallest correct patch |
+| `code-reviewer` | Diff + context | Bugs, regressions, risks, missing tests |
+| `pr-analyst` | PR diff | Structured review summary |
+| `doc-builder` | Repo/branch context | Documentation |
+| `impact-analyst` | Proposed change | Cross-repo blast radius analysis |
+
+### Skills
+
+| Skill | Loaded when | What it enforces |
+|---|---|---|
+| `scope-guard.md` | Always | Changes stay inside the authorized file perimeter |
+| `wiki-first.md` | Always | Wiki/docs lookup before any business logic implementation |
+| `git-conventions.md` | Any git op | Commit format, branching strategy, merge rules |
+| `branch-pr.md` | Any git op | Branch, commit, and PR naming conventions |
+| `dotnet-repository.md` | C# work | Repository/Handler/Controller patterns (Dapper) |
+| `vue-ui.md` | Vue work | Component structure, store, i18n |
+| `vue-service.md` | Vue work | Vuex service and store conventions |
+
+> Skills are loaded by the global `CLAUDE.md` at workspace root, which acts as a navigation orchestrator — it routes to per-repo `CLAUDE.md` files and injects the relevant skills based on file paths being touched.
+
+### Scripts
+
+| Script | What it does |
+|---|---|
+| `onboarding.mjs` | Full setup — copy workspace config, create skills junction, deploy commands and agents |
+| `sync-claude.mjs` | Incremental sync from `ai-dev-tools` → `~/.claude` (reports new/updated/extra) |
+| `gh-get-issue.mjs` | Fetch GitHub issue by number → JSON |
+| `gh-get-pr.mjs` | Fetch PR by number or source branch |
+| `gh-get-pr-threads.mjs` | Fetch reviewer comment threads for a PR |
+| `gh-post-comment.mjs` | Post a comment to a GitHub issue |
+| `gh-my-issues.mjs` | List issues assigned to current user |
+| `token-audit.mjs` | Aggregate token usage from Claude Code JSONL session files |
+| `update-repos.mjs` | Pull latest on all configured repos |
+| `list-files.mjs` | Recursive numbered file listing |
+
+---
+
+## Structure
+
+```
+ai-dev-tools/
+├── agents/       Specialized subagents — explicit I/O contracts, chainable
+├── commands/     Slash commands — type /name in Claude Code to invoke a pipeline
+├── skills/       Stack conventions — loaded automatically via CLAUDE.md
+├── scripts/      GitHub CLI, token auditing, sync utilities
+├── prompts/      Standalone prompt templates for manual use
+└── workspace/    Config files deployed to your dev root on setup
+    ├── CLAUDE.md            Workspace orchestrator
+    └── .claude/CLAUDE.md    Execution rules
+```
+
+---
+
+## Setup
+
+### Prerequisites
+
+- Node ≥ 20
+- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code)
+- [GitHub CLI](https://cli.github.com/) authenticated
+- Git
+
+### Install
+
+```bash
+git clone https://github.com/koydas/ai-dev-tools ~/dev/ai-dev-tools
+node ~/dev/ai-dev-tools/scripts/onboarding.mjs
+```
+
+Then open `.env` and set `gh_token` (scope: `repo, read:org`). The file is git-ignored.
+
+### Sync after updates
+
+```bash
+node ~/dev/ai-dev-tools/scripts/sync-claude.mjs
+```
+
+> **Windows?** All scripts target PowerShell-compatible paths. The onboarding script creates a junction for `skills/` rather than a symlink.
+
+---
+
+## Extending
+
+### Adding an agent
+
+Create `agents/your-agent.md`. The file must define: a one-paragraph role description, an **Input** section listing what it expects, and an **Output** section specifying the `### Status / ### Handoff` contract. Run `/sync-ai-tools` to deploy.
+
+### Adding a command
+
+Create `commands/your-command.md`. Specify which agents it chains, in what order, and how state is passed between them. Commands invoke agents and scripts — they don't implement logic themselves.
+
+---
+
+## Related
 
 | Repo | What it demonstrates |
 |---|---|
-| [`autonomous-dev-loop`](https://github.com/koydas/autonomous-dev-loop) | Fully autonomous GitHub-native SDLC — the pipeline this toolbox feeds into |
-| [`fullstack-pilot`](https://github.com/koydas/fullstack-pilot) | Polyglot multi-service stack with GitOps, ADRs, and AI agent integration |
+| [`autonomous-dev-loop`](https://github.com/koydas/autonomous-dev-loop) | Fully autonomous GitHub-native SDLC — the pipeline this toolbox feeds into. Issue → validator → coder → PR → reviewer → human merge gate, running on Qwen3-32B via Groq. |
+| [`fullstack-pilot`](https://github.com/koydas/fullstack-pilot) | Polyglot multi-service stack with GitOps, ADRs, Mermaid architecture diagrams, and AI agent integration. Staff/Architect positioning artifact. |
