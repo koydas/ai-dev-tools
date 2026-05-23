@@ -38,8 +38,6 @@ body:   As a DevOps engineer, I want requests capped per client key...
 Review report → ~/dev/pr-reviews/42-rate-limiting.md
 ```
 
-> See [`autonomous-dev-loop`](https://github.com/koydas/autonomous-dev-loop) for the fully automated version — Issue → validator → coder → PR → reviewer → human merge gate, running on Qwen3-32B via Groq.
-
 ### Skills / Agents / Commands
 
 | Primitive | Role | How it works |

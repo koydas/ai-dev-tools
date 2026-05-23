@@ -20,5 +20,3 @@ Create `commands/your-command.md`. Specify:
 
 - Which agents it chains, in what order
 - How state is passed between them
-
-Commands invoke agents and scripts — they don't implement logic themselves.
