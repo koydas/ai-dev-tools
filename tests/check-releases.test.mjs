@@ -99,6 +99,31 @@ describe('check-releases', () => {
     } finally { cleanup(); }
   });
 
+  test('ignores tags on other branches when selecting the baseline tag', () => {
+    const { work, cleanup } = makeRepos();
+    try {
+      git(work, 'commit --allow-empty -m "initial"');
+      git(work, 'tag v1.0.0');
+      git(work, 'commit --allow-empty -m "feat: on main"');
+      git(work, 'push origin main');
+      git(work, 'push origin --tags');
+
+      // Create a newer tag on a separate branch (e.g. a next/maintenance branch)
+      git(work, 'checkout -b next');
+      git(work, 'commit --allow-empty -m "feat: next-only commit"');
+      git(work, 'tag v2.0.0-next');
+      git(work, 'push origin next');
+      git(work, 'push origin --tags');
+      git(work, 'checkout main');
+
+      // Baseline must be v1.0.0 (reachable from main), not v2.0.0-next (only on next)
+      const [r] = checkReleases([work], GIT_CONFIG);
+      assert.equal(r.latestTag, 'v1.0.0', `wrong baseline tag: ${r.latestTag}`);
+      assert.equal(r.status, 'unreleased');
+      assert.equal(r.ahead, 1);
+    } finally { cleanup(); }
+  });
+
   test('compares against remote main, not local HEAD', () => {
     const { work, cleanup } = makeRepos();
     try {

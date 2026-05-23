@@ -7,6 +7,7 @@ import { execSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 import { loadGitConfig } from './config.mjs';
 
 const DEFAULT_CONFIG = join(homedir(), 'dev', '.repos');
@@ -31,8 +32,13 @@ function checkRepo(repoPath, { default_branch: branch, remote }) {
 
     const remoteBranch = `${remote}/${branch}`;
 
-    // Get latest semver tag
-    const tagsRaw = execSync('git tag --sort=-version:refname', { cwd: repoPath, encoding: 'utf8' }).trim();
+    // Get the latest semver tag reachable from the remote branch only.
+    // --merged restricts to tags that are ancestors of remoteBranch, so tags
+    // on other branches (next, maintenance) are excluded from the baseline.
+    const tagsRaw = execSync(
+      `git tag --sort=-version:refname --merged ${remoteBranch}`,
+      { cwd: repoPath, encoding: 'utf8' }
+    ).trim();
     const tags = tagsRaw.split('\n').filter(t => /^v?\d+\.\d+\.\d+/.test(t));
 
     if (tags.length === 0) {
@@ -109,7 +115,7 @@ function formatResults(results) {
   console.log(`\n${results.length} repos checked, ${unreleased.length} with unreleased changes`);
 }
 
-if (process.argv[1] === new URL(import.meta.url).pathname) {
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   const configIdx = args.indexOf('--config');
   const configPath = configIdx !== -1 ? args[configIdx + 1] : DEFAULT_CONFIG;
