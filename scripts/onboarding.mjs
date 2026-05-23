@@ -55,7 +55,8 @@ async function main() {
       encoding: 'utf8',
     });
     if (syncResult.status !== 0) {
-      console.error('  sync failed');
+      console.error('  sync failed — onboarding incomplete');
+      process.exit(syncResult.status ?? 1);
     }
   } else {
     console.log('  [dry-run] would run sync-claude.mjs');
