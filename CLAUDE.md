@@ -9,9 +9,9 @@ agents/     Specialized subagents — one responsibility, explicit I/O, chainabl
 commands/   Slash commands — pipeline definitions only, no logic
 skills/     Stack conventions — loaded automatically via CLAUDE.md routing
 scripts/    External I/O — GitHub API, file ops (ESM .mjs, Node ≥ 20)
-configs/    Configuration non-secrète versionnée (git.yaml, …)
+configs/    Versioned non-secret configuration (git.yaml, …)
 prompts/    Standalone prompt templates for manual use
-tests/      Tests unitaires Node (node --test), zéro dépendance externe
+tests/      Node unit tests (node --test), zero external dependencies
 workspace/  Config files deployed to developer root during onboarding
 docs/adr/      Architecture Decision Records — source of truth for design decisions
 docs/commands/ Reference documentation for each slash command
@@ -72,33 +72,33 @@ Create `scripts/your-script.mjs` (ESM). Scripts own all external I/O — GitHub 
 
 ## Configuration
 
-| Fichier | Contenu | Versionné |
+| File | Contents | Versioned |
 |---|---|---|
-| `configs/git.yaml` | Paramètres git non-secrets (`default_branch`, `remote`) | Oui |
-| `.env` | Secrets (`gh_token`) | Non — git-ignoré |
+| `configs/git.yaml` | Non-secret git settings (`default_branch`, `remote`) | Yes |
+| `.env` | Secrets (`gh_token`) | No — git-ignored |
 
-Lire `configs/git.yaml` via `scripts/config.mjs` (fonction exportée `loadGitConfig()`). Ne jamais mettre de tokens ou credentials dans `configs/`.
+Read `configs/git.yaml` via `scripts/config.mjs` (exported `loadGitConfig()`). Never put tokens or credentials in `configs/`.
 
 ## Tests
 
-Les scripts dans `scripts/` sont testés dans `tests/` avec le runner natif Node :
+Scripts in `scripts/` are tested in `tests/` using the native Node test runner:
 
 ```bash
 node --test
 ```
 
-- Zéro dépendance externe pour les tests
-- Les scripts qui appellent `gh` CLI ne sont pas testés unitairement — ils nécessitent un `gh` authentifié (tests d'intégration)
-- Ajouter `tests/<script>.test.mjs` pour chaque nouveau script dont la logique est testable sans CLI externe
+- Zero external dependencies in tests
+- Scripts that shell out to the `gh` CLI are not unit-tested — they require an authenticated `gh` (integration tests)
+- Add `tests/<script>.test.mjs` for each new script whose logic is testable without an external CLI
 
 ## Conventions
 
 - **Scripts**: ESM `.mjs`, Node ≥ 20, minimal external dependencies
-- **Scripts — sécurité**: utiliser `execFileSync(cmd, argsArray)` — jamais `execSync` avec interpolation de variables utilisateur (injection shell)
-- **Scripts — détection CLI**: utiliser `fileURLToPath(import.meta.url)` pour comparer à `process.argv[1]` (compatible Windows)
-- **Scripts — portabilité**: pas d'utilitaires Unix (`tail`, `head`, `grep`) — utiliser les options git natives ou du JS pur
-- **Scripts — GitHub API**: toujours passer `--paginate` à `gh api` pour éviter la perte silencieuse de données au-delà de la première page
-- **Scripts — structure**: exporter les fonctions principales ET fournir un point d'entrée CLI (`if process.argv[1] === fileURLToPath(import.meta.url)`)
+- **Scripts — security**: use `execFileSync(cmd, argsArray)` — never `execSync` with user-controlled string interpolation (shell injection)
+- **Scripts — CLI detection**: use `fileURLToPath(import.meta.url)` to compare against `process.argv[1]` (Windows-compatible)
+- **Scripts — portability**: no Unix utilities (`tail`, `head`, `grep`) — use native git options or plain JS
+- **Scripts — GitHub API**: always pass `--paginate` to `gh api` to avoid silently losing data past the first page
+- **Scripts — structure**: export the main functions AND provide a CLI entrypoint (`if process.argv[1] === fileURLToPath(import.meta.url)`)
 - **Agents / Commands / Skills**: Markdown only — no code
 - **Commands delegate**: a command is a pipeline definition, never an implementation
 - **Human gates**: invocation (user types the command), review (`NEEDS_REVIEW` status), merge (no autonomous push to main)
