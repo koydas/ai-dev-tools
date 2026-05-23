@@ -22,7 +22,7 @@ Agents and commands are defined as **Markdown files** in `agents/` and `commands
 **Positive**
 - Directly readable and editable without a development environment
 - Diffs are meaningful in code review (changes to instructions are visible as text changes)
-- No build step required; edits are live after `/sync-ai-tools`
+- No build step required; edits are live after `/sync-ai-dev-tools`
 - Claude Code's native file-based command loading requires no additional tooling
 
 **Negative**

@@ -11,7 +11,8 @@ skills/     Stack conventions — loaded automatically via CLAUDE.md routing
 scripts/    External I/O — GitHub API, file ops (ESM .mjs, Node ≥ 20)
 prompts/    Standalone prompt templates for manual use
 workspace/  Config files deployed to developer root during onboarding
-docs/adr/   Architecture Decision Records — source of truth for design decisions
+docs/adr/      Architecture Decision Records — source of truth for design decisions
+docs/commands/ Reference documentation for each slash command
 ```
 
 ## Architecture
@@ -57,6 +58,8 @@ Create `commands/your-command.md` with:
 - How state is passed between agents
 - No logic in commands — delegate everything to agents or scripts
 
+Also create `docs/commands/your-command.md` with purpose, invocation, and output format.
+
 ### Skill
 
 Create `skills/your-skill.md` as a convention guide (Markdown only). Add a file-path routing rule to `workspace/CLAUDE.md` so the skill is injected when relevant files are touched ([ADR-006](docs/adr/ADR-006-claude-md-as-workspace-orchestrator.md)).
@@ -79,3 +82,8 @@ Create `scripts/your-script.mjs` (ESM). Scripts own all external I/O — GitHub 
 | `README.md` | Full reference — commands, agents, skills, scripts, setup |
 | `CONTRIBUTING.md` | Architectural rules for adding agents and commands |
 | `docs/adr/` | All architecture decisions with rationale |
+| `docs/commands/` | Reference documentation for each slash command |
+
+## Auto-sync
+
+After creating or modifying any file in `agents/`, `commands/`, `skills/`, or `prompts/`, automatically run `/sync-ai-dev-tools` to deploy the changes to `~/.claude`.

@@ -78,7 +78,7 @@ Next step and what to pass forward
 | `/demo-prep` | — | Feature description → slide-ready sprint demo content |
 | `/token-audit [days]` | — | Audit Claude Code token usage — trends, model breakdown, command adoption |
 | `/check-releases` | — | List repos with main changes not yet in a release |
-| `/sync-ai-tools` | — | Sync commands and agents from this repo to `~/.claude` |
+| `/sync-ai-dev-tools` | — | Sync commands, agents, and prompts from this repo to `~/.claude` |
 
 ### Agents
 
@@ -110,7 +110,7 @@ Next step and what to pass forward
 | Script | What it does | Usage |
 |---|---|---|
 | `onboarding.mjs` | Full setup — copy workspace config, create skills junction, deploy commands and agents | CLI |
-| `sync-claude.mjs` | Incremental sync from `ai-dev-tools` → `~/.claude` (reports new/updated/extra) | CLI / via `/sync-ai-tools` |
+| `sync-claude.mjs` | Incremental sync from `ai-dev-tools` → `~/.claude` (reports new/updated/extra) | CLI / via `/sync-ai-dev-tools` |
 | `gh-get-issue.mjs` | Fetch GitHub issue by number → JSON | CLI / via commands |
 | `gh-get-pr.mjs` | Fetch PR by number or source branch | CLI / via commands |
 | `gh-get-pr-threads.mjs` | Fetch reviewer comment threads for a PR | CLI / via commands |
@@ -131,6 +131,9 @@ ai-dev-tools/
 ├── skills/       Stack conventions — loaded automatically via CLAUDE.md
 ├── scripts/      GitHub CLI, token auditing, sync utilities
 ├── prompts/      Standalone prompt templates for manual use
+├── docs/
+│   ├── adr/          Architecture Decision Records
+│   └── commands/     Reference docs for each slash command
 └── workspace/    Config files deployed to your dev root on setup
     ├── CLAUDE.md            Workspace orchestrator
     └── .claude/CLAUDE.md    Execution rules
