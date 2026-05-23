@@ -8,6 +8,7 @@
 import { execSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { homedir } from 'node:os';
 
 const DEFAULT_CONFIG = join(homedir(), 'dev', '.repos');
@@ -77,7 +78,7 @@ function formatResults(results) {
   console.log(`\n${results.length} repos checked, ${updated} updated`);
 }
 
-if (process.argv[1] === new URL(import.meta.url).pathname) {
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   const configIdx = args.indexOf('--config');
   const configPath = configIdx !== -1 ? args[configIdx + 1] : DEFAULT_CONFIG;
