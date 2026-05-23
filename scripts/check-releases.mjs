@@ -54,7 +54,7 @@ function checkRepo(repoPath, { default_branch: branch, remote }) {
 
     // Get oldest unreleased commit message (first commit after the tag)
     const firstCommit = execSync(
-      `git log --oneline ${latestTag}..${remoteBranch} | tail -1`,
+      `git log --oneline --reverse -n 1 ${latestTag}..${remoteBranch}`,
       { cwd: repoPath, encoding: 'utf8' }
     ).trim();
 

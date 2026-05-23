@@ -3,35 +3,29 @@
 // Usage: node scripts/gh-get-pr.mjs [<pr-number> | --branch <branch>] [--repo <owner/repo>]
 // Node ≥ 20, requires `gh` CLI authenticated
 
-import { execSync } from 'node:child_process';
+import { execSync, execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 const FIELDS = 'number,title,body,state,author,headRefName,baseRefName,labels,assignees,reviewRequests,reviews,comments,url,createdAt,updatedAt,mergedAt,isDraft';
 
 export function getPr(identifier, repo) {
-  const repoFlag = repo ? `--repo ${repo}` : '';
-
+  const args = ['pr', 'view', '--json', FIELDS];
   if (/^\d+$/.test(String(identifier))) {
-    const raw = execSync(
-      `gh pr view ${identifier} ${repoFlag} --json ${FIELDS}`,
-      { encoding: 'utf8' }
-    );
-    return JSON.parse(raw);
+    args.push(String(identifier));
+  } else {
+    args.push('--head', String(identifier));
   }
-
-  // identifier is a branch name
-  const raw = execSync(
-    `gh pr view --head ${identifier} ${repoFlag} --json ${FIELDS}`,
-    { encoding: 'utf8' }
-  );
-  return JSON.parse(raw);
+  if (repo) args.push('--repo', repo);
+  return JSON.parse(execFileSync('gh', args, { encoding: 'utf8' }));
 }
 
 export function getPrDiff(prNumber, repo) {
-  const repoFlag = repo ? `--repo ${repo}` : '';
-  return execSync(`gh pr diff ${prNumber} ${repoFlag}`, { encoding: 'utf8' });
+  const args = ['pr', 'diff', String(prNumber)];
+  if (repo) args.push('--repo', repo);
+  return execFileSync('gh', args, { encoding: 'utf8' });
 }
 
-if (process.argv[1] === new URL(import.meta.url).pathname) {
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   const branchIdx = args.indexOf('--branch');
   const repoIdx = args.indexOf('--repo');
