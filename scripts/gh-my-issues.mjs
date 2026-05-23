@@ -3,17 +3,15 @@
 // Usage: node scripts/gh-my-issues.mjs [--repo <owner/repo>] [--state open|closed|all] [--limit <n>]
 // Node ≥ 20, requires `gh` CLI authenticated
 
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 const FIELDS = 'number,title,state,labels,assignees,author,url,createdAt,updatedAt';
 
 export function getMyIssues({ repo, state = 'open', limit = 30 } = {}) {
-  const repoFlag = repo ? `--repo ${repo}` : '';
-  const raw = execSync(
-    `gh issue list --assignee @me --state ${state} --limit ${limit} ${repoFlag} --json ${FIELDS}`,
-    { encoding: 'utf8' }
-  );
-  return JSON.parse(raw);
+  const args = ['issue', 'list', '--assignee', '@me', '--state', state, '--limit', String(limit), '--json', FIELDS];
+  if (repo) args.push('--repo', repo);
+  return JSON.parse(execFileSync('gh', args, { encoding: 'utf8' }));
 }
 
 function formatIssues(issues) {
@@ -30,7 +28,7 @@ function formatIssues(issues) {
   console.log(`\n${issues.length} issue(s)`);
 }
 
-if (process.argv[1] === new URL(import.meta.url).pathname) {
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   const repoIdx = args.indexOf('--repo');
   const stateIdx = args.indexOf('--state');

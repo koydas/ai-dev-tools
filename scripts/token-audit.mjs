@@ -6,6 +6,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 
 const DEFAULT_DAYS = 30;
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
@@ -114,7 +115,7 @@ function fmt(n) {
   return n.toLocaleString('en-US');
 }
 
-if (process.argv[1] === new URL(import.meta.url).pathname) {
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   const daysIdx = args.indexOf('--days');
   const srcIdx = args.indexOf('--src');
