@@ -3,7 +3,7 @@
 // Usage: node scripts/check-releases.mjs [--config <path>]
 // Node ≥ 20, no external dependencies
 
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
@@ -25,7 +25,7 @@ function checkRepo(repoPath, { default_branch: branch, remote }) {
   try {
     // Fetch to ensure the remote ref is current before comparing
     try {
-      execSync(`git fetch ${remote} ${branch} --quiet`, { cwd: repoPath });
+      execFileSync('git', ['fetch', remote, branch, '--quiet'], { cwd: repoPath });
     } catch {
       // Non-fatal: proceed with whatever is cached locally
     }
@@ -35,8 +35,8 @@ function checkRepo(repoPath, { default_branch: branch, remote }) {
     // Get the latest semver tag reachable from the remote branch only.
     // --merged restricts to tags that are ancestors of remoteBranch, so tags
     // on other branches (next, maintenance) are excluded from the baseline.
-    const tagsRaw = execSync(
-      `git tag --sort=-version:refname --merged ${remoteBranch}`,
+    const tagsRaw = execFileSync(
+      'git', ['tag', '--sort=-version:refname', '--merged', remoteBranch],
       { cwd: repoPath, encoding: 'utf8' }
     ).trim();
     const tags = tagsRaw.split('\n').filter(t => /^v?\d+\.\d+\.\d+/.test(t));
@@ -47,9 +47,11 @@ function checkRepo(repoPath, { default_branch: branch, remote }) {
 
     const latestTag = tags[0];
 
-    // Count commits on the default branch since the latest tag
-    const aheadRaw = execSync(
-      `git rev-list --count ${latestTag}..${remoteBranch}`,
+    // Count commits on the default branch since the latest tag.
+    // latestTag comes from git output and could contain shell metacharacters —
+    // passing it via execFileSync arg array avoids any shell interpretation.
+    const aheadRaw = execFileSync(
+      'git', ['rev-list', '--count', `${latestTag}..${remoteBranch}`],
       { cwd: repoPath, encoding: 'utf8' }
     ).trim();
     const ahead = parseInt(aheadRaw, 10);
@@ -61,8 +63,8 @@ function checkRepo(repoPath, { default_branch: branch, remote }) {
     // Get oldest unreleased commit (first commit after the tag).
     // --reverse alone, then take the first line in JS — combining with -n 1 would
     // apply the limit before reversing and would return the newest commit instead.
-    const logOutput = execSync(
-      `git log --oneline --reverse ${latestTag}..${remoteBranch}`,
+    const logOutput = execFileSync(
+      'git', ['log', '--oneline', '--reverse', `${latestTag}..${remoteBranch}`],
       { cwd: repoPath, encoding: 'utf8' }
     ).trim();
     const firstCommit = logOutput.split('\n')[0] ?? '';

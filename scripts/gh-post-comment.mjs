@@ -4,16 +4,14 @@
 //        echo "body" | node scripts/gh-post-comment.mjs <number> [--repo <owner/repo>]
 // Node ≥ 20, requires `gh` CLI authenticated
 
-import { execSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 export function postComment(number, body, repo) {
-  const repoFlag = repo ? `--repo ${repo}` : '';
-  const result = spawnSync(
-    'gh',
-    ['issue', 'comment', String(number), '--body', body, ...repoFlag.split(' ').filter(Boolean)],
-    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }
-  );
+  const args = ['issue', 'comment', String(number), '--body', body];
+  if (repo) args.push('--repo', repo);
+  const result = spawnSync('gh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 
   if (result.status !== 0) {
     throw new Error(result.stderr || 'gh command failed');
@@ -22,7 +20,7 @@ export function postComment(number, body, repo) {
   return result.stdout.trim();
 }
 
-if (process.argv[1] === new URL(import.meta.url).pathname) {
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   const repoIdx = args.indexOf('--repo');
   const repo = repoIdx !== -1 ? args[repoIdx + 1] : undefined;
@@ -43,7 +41,7 @@ if (process.argv[1] === new URL(import.meta.url).pathname) {
 
   // Read body from stdin if not provided as argument
   if (!body && !process.stdin.isTTY) {
-    body = readFileSync('/dev/stdin', 'utf8').trim();
+    body = readFileSync(0, 'utf8').trim();
   }
 
   if (!body) {
