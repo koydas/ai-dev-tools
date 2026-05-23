@@ -3,28 +3,24 @@
 // Usage: node scripts/gh-get-pr-threads.mjs <pr-number> [--repo <owner/repo>]
 // Node ≥ 20, requires `gh` CLI authenticated
 
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 export function getPrThreads(prNumber, repo) {
-  const repoFlag = repo ? `--repo ${repo}` : '';
-  const raw = execSync(
-    `gh pr view ${prNumber} ${repoFlag} --json reviews,reviewRequests,comments`,
-    { encoding: 'utf8' }
-  );
-  const data = JSON.parse(raw);
+  const prArgs = ['pr', 'view', String(prNumber), '--json', 'reviews,reviewRequests,comments'];
+  if (repo) prArgs.push('--repo', repo);
+  const data = JSON.parse(execFileSync('gh', prArgs, { encoding: 'utf8' }));
 
   // Group inline review comments by thread using the GitHub API
   // gh pr view only gives top-level comments; use the REST API for review threads
   const ownerRepo = resolveRepo(repo);
-  const threadsRaw = execSync(
-    `gh api --paginate repos/${ownerRepo}/pulls/${prNumber}/comments`,
+  // --slurp merges all pages into an array of page-arrays; flatten to get all comments
+  const threadsRaw = execFileSync(
+    'gh',
+    ['api', '--paginate', '--slurp', `repos/${ownerRepo}/pulls/${prNumber}/comments`],
     { encoding: 'utf8' }
   );
-  // --paginate emits one JSON array per page; merge all pages into a flat array
-  const inlineComments = threadsRaw
-    .trim()
-    .split('\n')
-    .flatMap(line => { try { return JSON.parse(line); } catch { return []; } });
+  const inlineComments = JSON.parse(threadsRaw).flat();
 
   // Group by in_reply_to_id to reconstruct threads
   const roots = inlineComments.filter(c => !c.in_reply_to_id);
@@ -52,14 +48,13 @@ export function getPrThreads(prNumber, repo) {
 function resolveRepo(repo) {
   if (repo) return repo;
   try {
-    const remote = execSync('gh repo view --json nameWithOwner -q .nameWithOwner', { encoding: 'utf8' }).trim();
-    return remote;
+    return execFileSync('gh', ['repo', 'view', '--json', 'nameWithOwner', '-q', '.nameWithOwner'], { encoding: 'utf8' }).trim();
   } catch {
     throw new Error('Could not determine repository. Pass --repo <owner/repo>.');
   }
 }
 
-if (process.argv[1] === new URL(import.meta.url).pathname) {
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   const number = args.find(a => /^\d+$/.test(a));
   const repoIdx = args.indexOf('--repo');
