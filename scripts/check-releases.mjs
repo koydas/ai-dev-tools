@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Check which configured repos have unreleased commits on main
+// Check which configured repos have unreleased commits on the default branch
 // Usage: node scripts/check-releases.mjs [--config <path>]
 // Node ≥ 20, no external dependencies
 
@@ -7,19 +7,30 @@ import { execSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
+import { loadGitConfig } from './config.mjs';
 
 const DEFAULT_CONFIG = join(homedir(), 'dev', '.repos');
 
-export function checkReleases(repoPaths) {
-  return repoPaths.map(checkRepo);
+export function checkReleases(repoPaths, gitConfig) {
+  const cfg = gitConfig ?? loadGitConfig();
+  return repoPaths.map(p => checkRepo(p, cfg));
 }
 
-function checkRepo(repoPath) {
+function checkRepo(repoPath, { default_branch: branch, remote }) {
   if (!existsSync(join(repoPath, '.git'))) {
     return { path: repoPath, status: 'skipped', message: 'Not a git repository' };
   }
 
   try {
+    // Fetch to ensure the remote ref is current before comparing
+    try {
+      execSync(`git fetch ${remote} ${branch} --quiet`, { cwd: repoPath });
+    } catch {
+      // Non-fatal: proceed with whatever is cached locally
+    }
+
+    const remoteBranch = `${remote}/${branch}`;
+
     // Get latest semver tag
     const tagsRaw = execSync('git tag --sort=-version:refname', { cwd: repoPath, encoding: 'utf8' }).trim();
     const tags = tagsRaw.split('\n').filter(t => /^v?\d+\.\d+\.\d+/.test(t));
@@ -30,9 +41,9 @@ function checkRepo(repoPath) {
 
     const latestTag = tags[0];
 
-    // Count commits on main since the latest tag
+    // Count commits on the default branch since the latest tag
     const aheadRaw = execSync(
-      `git rev-list --count ${latestTag}..HEAD`,
+      `git rev-list --count ${latestTag}..${remoteBranch}`,
       { cwd: repoPath, encoding: 'utf8' }
     ).trim();
     const ahead = parseInt(aheadRaw, 10);
@@ -41,9 +52,9 @@ function checkRepo(repoPath) {
       return { path: repoPath, latestTag, status: 'up-to-date', ahead: 0 };
     }
 
-    // Get first commit message since tag
+    // Get oldest unreleased commit message (first commit after the tag)
     const firstCommit = execSync(
-      `git log --oneline ${latestTag}..HEAD | tail -1`,
+      `git log --oneline ${latestTag}..${remoteBranch} | tail -1`,
       { cwd: repoPath, encoding: 'utf8' }
     ).trim();
 
