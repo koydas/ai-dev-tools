@@ -83,7 +83,7 @@ function loadConfig(configPath) {
   return content.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
 }
 
-function formatResults(results) {
+function formatResults(results, branch = 'main') {
   const unreleased = results.filter(r => r.status === 'unreleased');
   const upToDate = results.filter(r => r.status === 'up-to-date');
   const other = results.filter(r => !['unreleased', 'up-to-date'].includes(r.status));
@@ -92,7 +92,7 @@ function formatResults(results) {
     console.log('Unreleased changes:\n');
     for (const r of unreleased) {
       const name = r.path.split('/').pop();
-      console.log(`  ${name.padEnd(20)} ${r.latestTag} → main (+${r.ahead} commits)  ${r.firstCommit ?? ''}`);
+      console.log(`  ${name.padEnd(20)} ${r.latestTag} → ${branch} (+${r.ahead} commits)  ${r.firstCommit ?? ''}`);
     }
   }
 
@@ -121,11 +121,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const configPath = configIdx !== -1 ? args[configIdx + 1] : DEFAULT_CONFIG;
 
   const repoPaths = loadConfig(configPath);
-  const results = checkReleases(repoPaths);
+  const cfg = loadGitConfig();
+  const results = checkReleases(repoPaths, cfg);
 
   if (args.includes('--json')) {
     console.log(JSON.stringify(results, null, 2));
   } else {
-    formatResults(results);
+    formatResults(results, cfg.default_branch);
   }
 }

@@ -3,20 +3,18 @@
 // Usage: node scripts/gh-get-issue.mjs <issue-number> [--repo <owner/repo>]
 // Node ≥ 20, requires `gh` CLI authenticated
 
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 const FIELDS = 'number,title,body,state,labels,assignees,author,comments,url,createdAt,updatedAt';
 
 export function getIssue(number, repo) {
-  const repoFlag = repo ? `--repo ${repo}` : '';
-  const raw = execSync(
-    `gh issue view ${number} ${repoFlag} --json ${FIELDS}`,
-    { encoding: 'utf8' }
-  );
-  return JSON.parse(raw);
+  const args = ['issue', 'view', String(number), '--json', FIELDS];
+  if (repo) args.push('--repo', repo);
+  return JSON.parse(execFileSync('gh', args, { encoding: 'utf8' }));
 }
 
-if (process.argv[1] === new URL(import.meta.url).pathname) {
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   const number = args.find(a => /^\d+$/.test(a));
   const repoIdx = args.indexOf('--repo');

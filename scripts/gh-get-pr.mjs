@@ -13,7 +13,8 @@ export function getPr(identifier, repo) {
   if (/^\d+$/.test(String(identifier))) {
     args.push(String(identifier));
   } else {
-    args.push('--head', String(identifier));
+    // Branch name passed positionally — gh pr view accepts a branch as a positional arg
+    args.push(String(identifier));
   }
   if (repo) args.push('--repo', repo);
   return JSON.parse(execFileSync('gh', args, { encoding: 'utf8' }));
