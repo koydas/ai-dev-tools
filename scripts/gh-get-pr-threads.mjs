@@ -17,10 +17,14 @@ export function getPrThreads(prNumber, repo) {
   // gh pr view only gives top-level comments; use the REST API for review threads
   const ownerRepo = resolveRepo(repo);
   const threadsRaw = execSync(
-    `gh api repos/${ownerRepo}/pulls/${prNumber}/comments`,
+    `gh api --paginate repos/${ownerRepo}/pulls/${prNumber}/comments`,
     { encoding: 'utf8' }
   );
-  const inlineComments = JSON.parse(threadsRaw);
+  // --paginate emits one JSON array per page; merge all pages into a flat array
+  const inlineComments = threadsRaw
+    .trim()
+    .split('\n')
+    .flatMap(line => { try { return JSON.parse(line); } catch { return []; } });
 
   // Group by in_reply_to_id to reconstruct threads
   const roots = inlineComments.filter(c => !c.in_reply_to_id);
