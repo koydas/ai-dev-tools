@@ -12,7 +12,7 @@ Create `agents/your-agent.md`. The file must define:
 - An **Input** section listing what it expects
 - An **Output** section specifying the `### Status / ### Handoff` contract
 
-Run `/sync-ai-tools` to deploy.
+Run `/sync-ai-dev-tools` to deploy.
 
 ## Adding a command
 
@@ -20,3 +20,9 @@ Create `commands/your-command.md`. Specify:
 
 - Which agents it chains, in what order
 - How state is passed between them
+
+Commands invoke agents and scripts — they don't implement logic themselves.
+
+Also create `docs/commands/your-command.md` covering: purpose, invocation, what it does, and output format. See [`docs/commands/sync-ai-dev-tools.md`](docs/commands/sync-ai-dev-tools.md) as an example.
+
+Run `/sync-ai-dev-tools` to deploy.
