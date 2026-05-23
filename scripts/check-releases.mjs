@@ -52,11 +52,14 @@ function checkRepo(repoPath, { default_branch: branch, remote }) {
       return { path: repoPath, latestTag, status: 'up-to-date', ahead: 0 };
     }
 
-    // Get oldest unreleased commit message (first commit after the tag)
-    const firstCommit = execSync(
-      `git log --oneline --reverse -n 1 ${latestTag}..${remoteBranch}`,
+    // Get oldest unreleased commit (first commit after the tag).
+    // --reverse alone, then take the first line in JS — combining with -n 1 would
+    // apply the limit before reversing and would return the newest commit instead.
+    const logOutput = execSync(
+      `git log --oneline --reverse ${latestTag}..${remoteBranch}`,
       { cwd: repoPath, encoding: 'utf8' }
     ).trim();
+    const firstCommit = logOutput.split('\n')[0] ?? '';
 
     return { path: repoPath, latestTag, status: 'unreleased', ahead, firstCommit };
   } catch (err) {
