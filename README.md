@@ -1,24 +1,42 @@
 # ai-dev-tools
 
 A Claude Code toolbox for AI-native development — commands, agents, skills, and scripts designed to compress the full SDLC cycle.
-Built and maintained using the workflows it describes.
 
-![WIP — being built in the open](https://img.shields.io/badge/status-WIP%20%E2%80%94%20being%20built%20in%20the%20open-yellow)
-![Node ≥ 20](https://img.shields.io/badge/node-%E2%89%A520-lightgrey)
-![Claude Code](https://img.shields.io/badge/Claude%20Code-required-blue)
+**ai-dev-tools** runs interactively inside Claude Code: you invoke a command, Claude orchestrates agents over your codebase, and you stay in the loop at every decision point. For a headless, fully automated pipeline that runs without human input between steps (GitHub Actions, Qwen3-32B via Groq), see [`autonomous-dev-loop`](https://github.com/koydas/autonomous-dev-loop).
 
 ---
 
 ## How it works
 
-The goal is a development loop where the human is a **gate**, not a relay. Commands orchestrate agents; agents do one thing well; skills shape how they reason.
+The human is a **gate**, not a relay. Commands orchestrate agents; agents do one thing well; skills shape how they reason.
 
 ```
 GitHub issue → /issue-code-generation → ticket-analyst → code-builder → code-reviewer → human merge gate
     input            command                 agent            agent           agent          approval
 ```
 
-> See [`autonomous-dev-loop`](https://github.com/koydas/autonomous-dev-loop) for the fully automated version of this pattern — Issue → validator → coder → PR → reviewer → human merge gate, running on Qwen3-32B via Groq.
+**Example run:**
+
+```bash
+# In your terminal
+$ gh issue view 42
+title:  Add rate limiting to API gateway
+body:   As a DevOps engineer, I want requests capped per client key...
+
+# In Claude Code
+> /issue-code-generation 42
+
+[ticket-analyst]  Parsing issue #42...
+  → DONE — brief: rate-limiting middleware, scope: api-gateway/middleware/
+
+[code-builder]    Generating patch...
+  → DONE — 3 files changed, tests included
+
+[code-reviewer]   Validating against acceptance criteria...
+  → NEEDS_REVIEW — missing error code on quota exceeded
+
+Review report → ~/dev/pr-reviews/42-rate-limiting.md
+```
 
 ### Skills / Agents / Commands
 
@@ -89,18 +107,18 @@ Next step and what to pass forward
 
 ### Scripts
 
-| Script | What it does |
-|---|---|
-| `onboarding.mjs` | Full setup — copy workspace config, create skills junction, deploy commands and agents |
-| `sync-claude.mjs` | Incremental sync from `ai-dev-tools` → `~/.claude` (reports new/updated/extra) |
-| `gh-get-issue.mjs` | Fetch GitHub issue by number → JSON |
-| `gh-get-pr.mjs` | Fetch PR by number or source branch |
-| `gh-get-pr-threads.mjs` | Fetch reviewer comment threads for a PR |
-| `gh-post-comment.mjs` | Post a comment to a GitHub issue |
-| `gh-my-issues.mjs` | List issues assigned to current user |
-| `token-audit.mjs` | Aggregate token usage from Claude Code JSONL session files |
-| `update-repos.mjs` | Pull latest on all configured repos |
-| `list-files.mjs` | Recursive numbered file listing |
+| Script | What it does | Usage |
+|---|---|---|
+| `onboarding.mjs` | Full setup — copy workspace config, create skills junction, deploy commands and agents | CLI |
+| `sync-claude.mjs` | Incremental sync from `ai-dev-tools` → `~/.claude` (reports new/updated/extra) | CLI / via `/sync-ai-tools` |
+| `gh-get-issue.mjs` | Fetch GitHub issue by number → JSON | CLI / via commands |
+| `gh-get-pr.mjs` | Fetch PR by number or source branch | CLI / via commands |
+| `gh-get-pr-threads.mjs` | Fetch reviewer comment threads for a PR | CLI / via commands |
+| `gh-post-comment.mjs` | Post a comment to a GitHub issue | CLI / via commands |
+| `gh-my-issues.mjs` | List issues assigned to current user | CLI |
+| `token-audit.mjs` | Aggregate token usage from Claude Code JSONL session files | via `/token-audit` |
+| `update-repos.mjs` | Pull latest on all configured repos | CLI |
+| `list-files.mjs` | Recursive numbered file listing | CLI |
 
 ---
 
@@ -125,7 +143,7 @@ ai-dev-tools/
 ### Prerequisites
 
 - Node ≥ 20
-- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code)
+- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) — requires an Anthropic account with Claude Code access (paid plan or active quota)
 - [GitHub CLI](https://cli.github.com/) authenticated
 - Git
 
@@ -150,13 +168,7 @@ node ~/dev/ai-dev-tools/scripts/sync-claude.mjs
 
 ## Extending
 
-### Adding an agent
-
-Create `agents/your-agent.md`. The file must define: a one-paragraph role description, an **Input** section listing what it expects, and an **Output** section specifying the `### Status / ### Handoff` contract. Run `/sync-ai-tools` to deploy.
-
-### Adding a command
-
-Create `commands/your-command.md`. Specify which agents it chains, in what order, and how state is passed between them. Commands invoke agents and scripts — they don't implement logic themselves.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to add agents and commands.
 
 ---
 
