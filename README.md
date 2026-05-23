@@ -1,3 +1,5 @@
+[![CI](https://github.com/koydas/ai-dev-tools/actions/workflows/ci.yml/badge.svg)](https://github.com/koydas/ai-dev-tools/actions/workflows/ci.yml)
+
 # ai-dev-tools
 
 A Claude Code toolbox for AI-native development — commands, agents, skills, and scripts designed to compress the full SDLC cycle.
