@@ -5,6 +5,7 @@
 
 import { readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const DEFAULT_IGNORE = ['.git', 'node_modules', '.DS_Store', 'dist', 'build', '__pycache__', '.next', '.nuxt'];
 
@@ -46,7 +47,7 @@ function formatListing(files, rootPath) {
   console.log(`\n${files.length} entries`);
 }
 
-if (process.argv[1] === new URL(import.meta.url).pathname) {
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   const ignoreIdx = args.indexOf('--ignore');
   const depthIdx = args.indexOf('--depth');
