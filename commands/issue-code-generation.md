@@ -17,7 +17,7 @@ Full issue → code → AC validation pipeline.
    - `security` or unclassified → `code-builder` (generic fallback)
    - If status is `BLOCKED` or `NEEDS_REVIEW`, stop and surface the output
 5. **If `--strict` flag is present**, pass to the `code-challenger` agent: the `### Patch` block, the original acceptance criteria, and the issue type
-   - If status is `NEEDS_REVIEW`, stop and surface the challenges for human decision before continuing
+   - If status is `BLOCKED` or `NEEDS_REVIEW`, stop and surface the output for human decision before continuing
    - On `DONE`, carry the `### Handoff` block (critical points list) forward to step 6
    - Skip this step entirely if `--strict` was not passed
 6. Pass to the `code-reviewer` agent: the `### Patch` block, the original acceptance criteria, and any type-specific evidence blocks produced by the builder:
