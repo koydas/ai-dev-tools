@@ -87,7 +87,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   } else if (cmd === 'read') {
     requireArgs('issueId', 'step');
     const content = readCheckpoint(issueId, step);
-    if (content === null) { console.log('null'); } else { process.stdout.write(content); }
+    if (content === null) {
+      console.error(`Checkpoint not found: ${issueId}/${step}`);
+      process.exit(1);
+    }
+    process.stdout.write(content);
   } else if (cmd === 'list') {
     requireArgs('issueId');
     const steps = listCheckpoints(issueId);
