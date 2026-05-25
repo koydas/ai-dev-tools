@@ -36,9 +36,9 @@ export function writeCheckpoint(issueId, step, content) {
   assertIssueId(issueId);
   assertStep(step);
   const dir = checkpointDir(issueId);
-  mkdirSync(dir, { recursive: true });
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
   const filePath = join(dir, `${step}.md`);
-  writeFileSync(filePath, content, 'utf8');
+  writeFileSync(filePath, content, { encoding: 'utf8', mode: 0o600 });
   return filePath;
 }
 
