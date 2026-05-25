@@ -12,9 +12,15 @@ import { fileURLToPath } from 'node:url';
 
 const CHECKPOINTS_ROOT = join(homedir(), 'dev', 'checkpoints');
 
-// Allowlist: exactly "NN-slug" where slug is lowercase letters/digits/hyphens.
-// Rejects any input containing path separators or other traversal characters.
+// Allowlist patterns — reject anything containing path separators or traversal sequences.
+const ISSUE_ID_RE = /^\d+$/;
 const STEP_RE = /^\d{2}-[a-z][a-z0-9-]*$/;
+
+function assertIssueId(issueId) {
+  if (!ISSUE_ID_RE.test(String(issueId))) {
+    throw new Error(`Invalid issueId "${issueId}" — must be a positive integer`);
+  }
+}
 
 function assertStep(step) {
   if (!STEP_RE.test(step)) {
@@ -34,6 +40,7 @@ function findFile(dir, step) {
 }
 
 export function writeCheckpoint(issueId, step, content) {
+  assertIssueId(issueId);
   assertStep(step);
   const dir = checkpointDir(issueId);
   mkdirSync(dir, { recursive: true });
@@ -44,6 +51,7 @@ export function writeCheckpoint(issueId, step, content) {
 }
 
 export function readCheckpoint(issueId, step) {
+  assertIssueId(issueId);
   assertStep(step);
   const file = findFile(checkpointDir(issueId), step);
   if (!file) return null;
@@ -51,6 +59,7 @@ export function readCheckpoint(issueId, step) {
 }
 
 export function listCheckpoints(issueId) {
+  assertIssueId(issueId);
   const dir = checkpointDir(issueId);
   if (!existsSync(dir)) return [];
   return readdirSync(dir)
