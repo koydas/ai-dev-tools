@@ -32,7 +32,7 @@ If no signal matches any type, output type `feature` and set status `NEEDS_REVIE
 
 ### Handoff
 Type: <type>
-Next agent: code-builder-<type>
+Next agent: code-builder-bug | code-builder-feature | code-builder-refactor | code-builder (fallback for security and unclassified)
 Pass the full issue JSON forward unchanged.
 If confidence is low, surface uncertainty to the human before continuing.
 ```
