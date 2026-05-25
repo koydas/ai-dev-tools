@@ -14,7 +14,7 @@ const CHECKPOINTS_ROOT = join(homedir(), 'dev', 'checkpoints');
 
 // Allowlist patterns — reject anything containing path separators or traversal sequences.
 const REPO_RE = /^[a-zA-Z0-9][a-zA-Z0-9._-]*\/[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
-const ISSUE_ID_RE = /^\d+$/;
+const ISSUE_ID_RE = /^[1-9]\d*$/;
 const STEP_RE = /^\d{2}-[a-z][a-z0-9-]*$/;
 
 function assertRepo(repo) {
