@@ -23,6 +23,10 @@ export function auditTokens({ days = DEFAULT_DAYS, src = PROJECTS_DIR } = {}) {
   for (const session of sessions) {
     let sessionTokens = 0;
     for (const entry of session.entries) {
+      // File mtime guards at the session level, but a recently touched file can
+      // contain older entries — filter those out when a per-entry timestamp exists.
+      if (entry.timestamp && new Date(entry.timestamp).getTime() < cutoff) continue;
+
       const usage = entry?.message?.usage ?? entry?.usage ?? null;
       if (!usage) continue;
 

@@ -23,9 +23,11 @@ function checkRepo(repoPath, { default_branch: branch, remote }) {
   }
 
   try {
-    // Fetch to ensure the remote ref is current before comparing
+    // Fetch branch and tags so the local tag refs reflect the remote's releases.
+    // Fetching only the branch leaves tags stale when a release is cut without
+    // new branch commits (the common "tag then push tag" flow).
     try {
-      execFileSync('git', ['fetch', remote, branch, '--quiet'], { cwd: repoPath });
+      execFileSync('git', ['fetch', remote, branch, '--tags', '--quiet'], { cwd: repoPath });
     } catch {
       // Non-fatal: proceed with whatever is cached locally
     }
