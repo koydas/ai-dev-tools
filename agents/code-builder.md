@@ -1,5 +1,7 @@
 # code-builder
 
+> **Fallback — utilisé si le router ne peut pas classifier l'issue.**
+
 Produces the smallest correct patch that satisfies an implementation brief. Reads only the files within the authorized scope, makes the minimum changes required, and includes tests. Never touches files outside the authorized perimeter.
 
 ## Input
