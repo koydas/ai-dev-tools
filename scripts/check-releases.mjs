@@ -41,7 +41,7 @@ function checkRepo(repoPath, { default_branch: branch, remote }) {
       'git', ['tag', '--sort=-version:refname', '--merged', remoteBranch],
       { cwd: repoPath, encoding: 'utf8' }
     ).trim();
-    const tags = tagsRaw.split('\n').filter(t => /^v?\d+\.\d+\.\d+/.test(t));
+    const tags = tagsRaw.split('\n').filter(t => /^v?\d+\.\d+\.\d+$/.test(t));
 
     if (tags.length === 0) {
       return { path: repoPath, status: 'no-tags', message: 'No release tags found' };

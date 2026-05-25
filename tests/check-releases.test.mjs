@@ -144,4 +144,23 @@ describe('check-releases', () => {
       assert.ok(r.firstCommit.includes('feat: on main'), `expected main commit, got: ${r.firstCommit}`);
     } finally { cleanup(); }
   });
+
+  test('excludes prerelease tags (rc, beta, alpha) from stable baseline', () => {
+    const { work, cleanup } = makeRepos();
+    try {
+      git(work, 'commit --allow-empty -m "initial"');
+      git(work, 'tag v1.0.0');
+      git(work, 'commit --allow-empty -m "feat: on main"');
+      git(work, 'tag v1.1.0-rc.1');
+      git(work, 'commit --allow-empty -m "fix: patch after rc"');
+      git(work, 'push origin main');
+      git(work, 'push origin --tags');
+
+      // v1.1.0-rc.1 must not be used as the baseline — v1.0.0 is the last stable tag
+      const [r] = checkReleases([work], GIT_CONFIG);
+      assert.equal(r.latestTag, 'v1.0.0', `prerelease tag used as baseline: ${r.latestTag}`);
+      assert.equal(r.status, 'unreleased');
+      assert.equal(r.ahead, 2);
+    } finally { cleanup(); }
+  });
 });

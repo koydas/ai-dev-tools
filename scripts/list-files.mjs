@@ -52,7 +52,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const ignoreIdx = args.indexOf('--ignore');
   const depthIdx = args.indexOf('--depth');
 
-  const extraIgnore = ignoreIdx !== -1 ? args[ignoreIdx + 1].split(',') : [];
+  const ignoreVal = ignoreIdx !== -1 ? args[ignoreIdx + 1] : undefined;
+  if (ignoreIdx !== -1 && (!ignoreVal || ignoreVal.startsWith('--'))) {
+    console.error('Error: --ignore requires a comma-separated value (e.g. --ignore dist,build)');
+    process.exit(1);
+  }
+  const extraIgnore = ignoreVal ? ignoreVal.split(',') : [];
   const maxDepth = depthIdx !== -1 ? parseInt(args[depthIdx + 1], 10) : Infinity;
   const rootPath = args.find(a => !a.startsWith('--') && args[args.indexOf(a) - 1] !== '--ignore' && args[args.indexOf(a) - 1] !== '--depth') ?? '.';
 
