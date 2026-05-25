@@ -1,0 +1,7 @@
+# Git configuration for ai-dev-tools scripts
+
+# Branch to compare release tags against and to use as the integration branch
+default_branch: main
+
+# Git remote name
+remote: origin
