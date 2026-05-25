@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Checkpoint read/write for the checkpoint-resume pattern.
-// Files land in ~/dev/checkpoints/<issueId>/<step>-<agent>.md
+// Files land in ~/dev/checkpoints/<issueId>/<step>.md
 // Usage: node scripts/checkpoint.mjs write <issueId> <step>  (content read from stdin)
 //        node scripts/checkpoint.mjs read  <issueId> <step>
 //        node scripts/checkpoint.mjs list  <issueId>
@@ -32,20 +32,12 @@ function checkpointDir(issueId) {
   return join(CHECKPOINTS_ROOT, String(issueId));
 }
 
-function findFile(dir, step) {
-  if (!existsSync(dir)) return null;
-  const prefix = `${step}-`;
-  const match = readdirSync(dir).find(f => f.startsWith(prefix) && f.endsWith('.md'));
-  return match ? join(dir, match) : null;
-}
-
 export function writeCheckpoint(issueId, step, content) {
   assertIssueId(issueId);
   assertStep(step);
   const dir = checkpointDir(issueId);
   mkdirSync(dir, { recursive: true });
-  const agentSlug = step.replace(/^\d+-/, '');
-  const filePath = join(dir, `${step}-${agentSlug}.md`);
+  const filePath = join(dir, `${step}.md`);
   writeFileSync(filePath, content, 'utf8');
   return filePath;
 }
@@ -53,9 +45,9 @@ export function writeCheckpoint(issueId, step, content) {
 export function readCheckpoint(issueId, step) {
   assertIssueId(issueId);
   assertStep(step);
-  const file = findFile(checkpointDir(issueId), step);
-  if (!file) return null;
-  return readFileSync(file, 'utf8');
+  const filePath = join(checkpointDir(issueId), `${step}.md`);
+  if (!existsSync(filePath)) return null;
+  return readFileSync(filePath, 'utf8');
 }
 
 export function listCheckpoints(issueId) {
@@ -63,8 +55,8 @@ export function listCheckpoints(issueId) {
   const dir = checkpointDir(issueId);
   if (!existsSync(dir)) return [];
   return readdirSync(dir)
-    .filter(f => f.endsWith('.md'))
-    .map(f => f.replace(/\.md$/, '').replace(/-[^-]+$/, ''))
+    .filter(f => f.endsWith('.md') && STEP_RE.test(f.slice(0, -3)))
+    .map(f => f.slice(0, -3))
     .sort();
 }
 
