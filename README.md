@@ -71,7 +71,7 @@ Next step and what to pass forward
 
 | Invoke | Agents used | What it does |
 |---|---|---|
-| `/issue-code-generation [id]` | `ticket-analyst` → `code-builder` → `code-reviewer` | Full issue → code → AC validation pipeline |
+| `/issue-code-generation [id] [--strict]` | `ticket-analyst` → `code-builder` → `code-reviewer` | Full issue → code → AC validation pipeline. `--strict` activates critic-pair (code-challenger) before review |
 | `/pr-review` | `pr-analyst` | Review PR, write structured report to `~/dev/pr-reviews/` |
 | `/pr-fixer` | `code-builder` | Apply blocking fixes from an existing review file |
 | `/ac-check [id]` | `code-reviewer` | Validate code coverage against issue acceptance criteria |
