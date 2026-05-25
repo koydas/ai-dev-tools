@@ -16,9 +16,14 @@ Full issue → code → AC validation pipeline.
    - `refactor` → `code-builder-refactor`
    - `security` or unclassified → `code-builder` (generic fallback)
    - If status is `BLOCKED` or `NEEDS_REVIEW`, stop and surface the output
-5. Pass to the `code-reviewer` agent: the `### Patch` block, the original acceptance criteria, and any type-specific evidence blocks produced by the builder:
+5. **If `--strict` flag is present**, pass to the `code-challenger` agent: the `### Patch` block, the original acceptance criteria, and the issue type
+   - If status is `NEEDS_REVIEW`, stop and surface the challenges for human decision before continuing
+   - On `DONE`, carry the `### Handoff` block (critical points list) forward to step 6
+   - Skip this step entirely if `--strict` was not passed
+6. Pass to the `code-reviewer` agent: the `### Patch` block, the original acceptance criteria, and any type-specific evidence blocks produced by the builder:
    - `bug` → include `### Reproduction`
    - `refactor` → include `### Non-regression evidence`
    - `feature` / `security` / fallback → `### Patch` only
-6. If code-reviewer status is `NEEDS_REVIEW`, write the review report and stop — present blocking issues to the user
-7. If code-reviewer status is `DONE`, present the full patch to the user for review and merge approval
+   - If `--strict` was used, also include the `### Handoff` block from code-challenger so the reviewer is aware of pre-identified risks
+7. If code-reviewer status is `NEEDS_REVIEW`, write the review report and stop — present blocking issues to the user
+8. If code-reviewer status is `DONE`, present the full patch to the user for review and merge approval
