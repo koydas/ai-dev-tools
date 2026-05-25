@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Checkpoint read/write for the checkpoint-resume pattern.
 // Files land in ~/dev/checkpoints/<issueId>/<step>-<agent>.md
-// Usage: node scripts/checkpoint.mjs write <issueId> <step> <content>
+// Usage: node scripts/checkpoint.mjs write <issueId> <step>  (content read from stdin)
 //        node scripts/checkpoint.mjs read  <issueId> <step>
 //        node scripts/checkpoint.mjs list  <issueId>
 
@@ -48,11 +48,17 @@ export function listCheckpoints(issueId) {
     .sort();
 }
 
+async function readStdin() {
+  const chunks = [];
+  for await (const chunk of process.stdin) chunks.push(chunk);
+  return Buffer.concat(chunks).toString('utf8');
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const [, , cmd, issueId, step, ...rest] = process.argv;
+  const [, , cmd, issueId, step] = process.argv;
 
   if (cmd === 'write') {
-    const content = rest.join(' ');
+    const content = await readStdin();
     const path = writeCheckpoint(issueId, step, content);
     console.log(`Checkpoint written: ${path}`);
   } else if (cmd === 'read') {
