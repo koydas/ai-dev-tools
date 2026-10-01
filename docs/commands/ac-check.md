@@ -19,7 +19,7 @@ Where `42` is the GitHub issue number whose AC you want to check against.
 1. Fetches the issue and extracts acceptance criteria
 2. Diffs the current branch against `main` — committed, uncommitted, and untracked changes
 3. Runs `code-reviewer`, which maps the diff to the AC items and runs the repo's own checks (tests, lint, type-check) against the working tree — see [ADR-009](../adr/ADR-009-tool-grounded-review.md)
-4. Presents an AC coverage checklist and the Evidence table
+4. Presents an AC coverage checklist and the Evidence table — a failing check is `PRE_EXISTING` only if the base branch's CI (merge-base, via `scripts/gh-get-check-runs.mjs`) failed it too
 
 ## Output
 

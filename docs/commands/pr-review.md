@@ -28,7 +28,7 @@ Produces a consistent, structured review for any PR — covering correctness, ri
 
 Report sections:
 - Summary of changes
-- Evidence — each check with command, source, and `PASS` / `FAIL` / `N/A` / `NOT_RUN`
+- Evidence — each check with command, source, and `PASS` / `FAIL` / `N/A` / `NOT_RUN` / `PRE_EXISTING` (fails on the base branch too, per the CI results of the merge-base fetched by `scripts/gh-get-check-runs.mjs`)
 - Risk assessment (Low / Medium / High)
 - Blocking issues (must fix before merge)
 - Non-blocking suggestions
@@ -40,7 +40,7 @@ Checks only run when the working tree is exactly the PR head (HEAD = PR head SHA
 ## Human gates
 
 1. **Invocation** — you decide when to run it
-2. **Fork execution** — for a PR from a fork, the command asks before pr-analyst executes anything from the branch; declining yields `NOT_RUN` rows
+2. **Fork execution** — for a PR from a fork that is checked out, the command asks before pr-analyst executes anything from the branch (not asked when the PR is not checked out: nothing would run); declining yields `NOT_RUN` rows
 3. **NEEDS_REVIEW** — blocking issues and `FAIL` / `NOT_RUN` evidence are surfaced; no auto-comment posted
 4. **Comment posting** — you are asked for confirmation before any GitHub comment is posted
 

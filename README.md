@@ -117,6 +117,7 @@ Next step and what to pass forward
 | `gh-get-issue.mjs` | Fetch GitHub issue by number → JSON | CLI / via commands |
 | `gh-get-pr.mjs` | Fetch PR by number or source branch | CLI / via commands |
 | `gh-get-pr-threads.mjs` | Fetch reviewer comment threads for a PR | CLI / via commands |
+| `gh-get-check-runs.mjs` | Fetch the CI check runs of a commit (or of the merge-base with a branch) → JSON, for `PRE_EXISTING` evidence | via `/pr-review`, `/ac-check`, `/issue-code-generation`, `/pr-fixer` |
 | `gh-post-comment.mjs` | Post a comment to a GitHub issue | CLI / via commands |
 | `gh-my-issues.mjs` | List issues assigned to current user | CLI |
 | `token-audit.mjs` | Aggregate token usage from Claude Code JSONL session files | via `/token-audit` |

@@ -33,7 +33,7 @@ If the pipeline runs to completion without a `NEEDS_REVIEW` halt:
 - A diff of all changed files
 - An AC checklist confirming each criterion is covered
 - Confirmation that tests are present
-- An Evidence table showing the repo's checks passed on the patched working tree ([ADR-009](../adr/ADR-009-tool-grounded-review.md))
+- An Evidence table showing the repo's checks passed on the patched working tree (a failure also present in the base branch's CI is shown as `PRE_EXISTING`, non-blocking) ([ADR-009](../adr/ADR-009-tool-grounded-review.md))
 
 If a `NEEDS_REVIEW` is raised at any stage, the pipeline stops and surfaces:
 - The agent that raised it

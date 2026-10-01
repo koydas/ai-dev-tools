@@ -9,6 +9,7 @@ Reviews a pull request diff and produces a structured report covering correctnes
 - PR head SHA (`headRefOid`) and fork flag (`isCrossRepository`) — from `scripts/gh-get-pr.mjs`
 - Fork execution approval — set by the command after asking the user; only relevant when `isCrossRepository` is true
 - Optional: linked issue number for AC context
+- Optional: base CI results `{ sha, check_runs }` — from `scripts/gh-get-check-runs.mjs`, passed by the command (`sha` is the merge-base with the base branch)
 
 ## Procedure
 
@@ -31,7 +32,7 @@ Only when the working tree is exactly the PR head: `git rev-parse HEAD` equals t
 - **Timeout**: bound each check by the CI job's `timeout-minutes` when declared, else 10 minutes. On timeout, stop it → `NOT_RUN — timeout after <n> min`.
 - **Side-effect free only**: no install that rewrites a lockfile, no migration against a real database, no deploy, no network write, no git mutation.
 - **Fork PRs**: if `isCrossRepository` is true and the input does not carry an explicit fork execution approval, execute nothing from the branch — every check is `NOT_RUN — fork PR, execution not approved`. The agent never asks the user itself; the command owns that gate.
-- **Pre-existing failures**: a failing check is attributed to the PR unless the same failure is shown on the base branch by a CI run on the base SHA (cite its URL). Never check out the base to prove it. Proven → `PRE_EXISTING`; not proven → `FAIL`.
+- **Pre-existing failures**: a failing check is attributed to the PR unless the base CI results passed in the input prove it already failed there: a check run that runs the same check, with `conclusion` `failure` or `timed_out` → `PRE_EXISTING`, citing its `html_url` and the base `sha`. No base CI input, no matching check run, or any doubt about the match → `FAIL`. Never call GitHub and never check out the base to find out — the command owns that I/O (ADR-007).
 
 ### 3. Analyze and loop
 
@@ -59,7 +60,7 @@ One paragraph describing what this PR does.
 | Lint | `npm run lint` | `package.json` | FAIL — 2 errors (see Blocking issues) |
 | Type-check | — | — | N/A — no type-checker configured |
 | Scan | `dotnet list package --vulnerable` | `ci.yml` | NOT_RUN — HEAD is not the PR head |
-| Format | `dotnet format --verify-no-changes` | `ci.yml` | PRE_EXISTING — same failure on base CI run <url> |
+| Format | `dotnet format --verify-no-changes` | `ci.yml` | PRE_EXISTING — fails on base `a1b2c3d` too: <check run url> |
 
 **Risk assessment**
 - Low / Medium / High — reason
@@ -84,7 +85,7 @@ If NEEDS_REVIEW: share blocking issues with author or pass to /pr-fixer.
 If DONE: ready for merge approval.
 ```
 
-Result values: `PASS`, `FAIL`, `N/A` (the repo declares no such check), `NOT_RUN` (a check exists but was not executed — always give the reason), `PRE_EXISTING` (fails identically on the base branch, evidence cited — reported, not blocking).
+Result values: `PASS`, `FAIL`, `N/A` (the repo declares no such check), `NOT_RUN` (a check exists but was not executed — always give the reason), `PRE_EXISTING` (also failing in the base CI results passed as input, check run URL cited — reported, not blocking).
 
 ### Status rules
 
