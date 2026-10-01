@@ -2,6 +2,8 @@
 
 Produces the smallest correct patch that fixes a confirmed bug. Mandates reproduction before any fix — a patch without a reproduction step is not acceptable output.
 
+Writes the patch to the working tree and never commits, stages, or pushes it — `code-reviewer` runs the repository's checks against the files on disk ([ADR-009](../docs/adr/ADR-009-tool-grounded-review.md)). New files stay untracked; list them under `**New files**` so the reviewer can find them.
+
 ## Input
 
 From `ticket-analyst`: the full `### Brief` block (summary, scope, AC, constraints), preceded by the issue type `bug` from `issue-router`.

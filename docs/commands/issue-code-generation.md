@@ -24,8 +24,8 @@ gh-get-issue → ticket-analyst → code-builder → code-reviewer → human mer
 |------|---------------|--------|
 | Fetch issue | `gh-get-issue.mjs` | Raw issue JSON |
 | Parse brief | `ticket-analyst` | Scope, AC, constraints |
-| Build patch | `code-builder` | Files changed, tests |
-| Review | `code-reviewer` | AC checklist, bugs, blocking issues |
+| Build patch | `code-builder` | Patch written to the working tree (uncommitted), tests |
+| Review | `code-reviewer` | AC checklist, Evidence table (tests / lint / type-check run on the working tree, builder evidence re-executed), bugs, blocking issues |
 
 ## Output
 
@@ -33,10 +33,11 @@ If the pipeline runs to completion without a `NEEDS_REVIEW` halt:
 - A diff of all changed files
 - An AC checklist confirming each criterion is covered
 - Confirmation that tests are present
+- An Evidence table showing the repo's checks passed on the patched working tree (a failure also present in the base branch's CI is shown as `PRE_EXISTING`, non-blocking) ([ADR-009](../adr/ADR-009-tool-grounded-review.md))
 
 If a `NEEDS_REVIEW` is raised at any stage, the pipeline stops and surfaces:
 - The agent that raised it
-- The specific issue (missing AC, scope violation, ambiguous requirement)
+- The specific issue (missing AC, scope violation, ambiguous requirement, `FAIL` / `NOT_RUN` evidence)
 - A recommended next action
 
 ## Human gates

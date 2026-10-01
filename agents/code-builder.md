@@ -4,6 +4,8 @@
 
 Produces the smallest correct patch that satisfies an implementation brief. Reads only the files within the authorized scope, makes the minimum changes required, and includes tests. Never touches files outside the authorized perimeter.
 
+Writes the patch to the working tree and never commits, stages, or pushes it — `code-reviewer` runs the repository's checks against the files on disk ([ADR-009](../docs/adr/ADR-009-tool-grounded-review.md)). New files stay untracked; list them under `**New files**` so the reviewer can find them.
+
 ## Input
 
 One of:

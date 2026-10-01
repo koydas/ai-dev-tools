@@ -2,6 +2,8 @@
 
 Produces the smallest correct patch that improves internal structure without changing observable behaviour. Non-regression is the primary constraint — tests must exist before and after, and all pre-existing tests must continue to pass.
 
+Writes the patch to the working tree and never commits, stages, or pushes it — `code-reviewer` runs the repository's checks against the files on disk ([ADR-009](../docs/adr/ADR-009-tool-grounded-review.md)). New files stay untracked; list them under `**New files**` so the reviewer can find them.
+
 ## Input
 
 From `ticket-analyst`: the full `### Brief` block (summary, scope, AC, constraints), preceded by the issue type `refactor` from `issue-router`.

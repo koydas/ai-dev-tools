@@ -34,7 +34,8 @@ body:   As a DevOps engineer, I want requests capped per client key...
 [code-builder]    Generating patch...
   → DONE — 3 files changed, tests included
 
-[code-reviewer]   Validating against acceptance criteria...
+[code-reviewer]   Validating against acceptance criteria, running checks...
+  → Evidence: Tests PASS 42/42 · Lint PASS · Type-check N/A
   → NEEDS_REVIEW — missing error code on quota exceeded
 
 Review report → ~/dev/pr-reviews/42-rate-limiting.md
@@ -88,8 +89,8 @@ Next step and what to pass forward
 |---|---|---|
 | `ticket-analyst` | Raw GitHub issue | Concise implementation brief |
 | `code-builder` | Implementation brief | Smallest correct patch |
-| `code-reviewer` | Diff + context | Bugs, regressions, risks, missing tests |
-| `pr-analyst` | PR diff | Structured review summary |
+| `code-reviewer` | Diff + context | Bugs, regressions, risks, missing tests — grounded in executed checks |
+| `pr-analyst` | PR diff | Structured review summary with an Evidence table of executed checks |
 | `doc-builder` | Repo/branch context | Documentation |
 | `impact-analyst` | Proposed change | Cross-repo blast radius analysis |
 
@@ -116,6 +117,7 @@ Next step and what to pass forward
 | `gh-get-issue.mjs` | Fetch GitHub issue by number → JSON | CLI / via commands |
 | `gh-get-pr.mjs` | Fetch PR by number or source branch | CLI / via commands |
 | `gh-get-pr-threads.mjs` | Fetch reviewer comment threads for a PR | CLI / via commands |
+| `gh-get-check-runs.mjs` | Fetch the CI check runs of a commit (or of the merge-base with a branch) → JSON, for `PRE_EXISTING` evidence | via `/pr-review`, `/ac-check`, `/issue-code-generation`, `/pr-fixer` |
 | `gh-post-comment.mjs` | Post a comment to a GitHub issue | CLI / via commands |
 | `gh-my-issues.mjs` | List issues assigned to current user | CLI |
 | `token-audit.mjs` | Aggregate token usage from Claude Code JSONL session files | via `/token-audit` |
