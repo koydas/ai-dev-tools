@@ -88,8 +88,8 @@ Next step and what to pass forward
 |---|---|---|
 | `ticket-analyst` | Raw GitHub issue | Concise implementation brief |
 | `code-builder` | Implementation brief | Smallest correct patch |
-| `code-reviewer` | Diff + context | Bugs, regressions, risks, missing tests |
-| `pr-analyst` | PR diff | Structured review summary |
+| `code-reviewer` | Diff + context | Bugs, regressions, risks, missing tests — grounded in executed checks |
+| `pr-analyst` | PR diff | Structured review summary with an Evidence table of executed checks |
 | `doc-builder` | Repo/branch context | Documentation |
 | `impact-analyst` | Proposed change | Cross-repo blast radius analysis |
 

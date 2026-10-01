@@ -10,7 +10,8 @@ Fetch the current PR, run a structured review, and write the report to `~/dev/pr
 2. Fetch PR metadata (title, description, author, labels): `node scripts/gh-get-pr.mjs $ARGUMENTS`
 3. Fetch the PR diff (changed hunks): `node scripts/gh-get-pr.mjs` exports `getPrDiff(<pr-number>)`, or run `gh pr diff <pr-number>` directly — pass the full patch to pr-analyst
 4. Fetch reviewer comment threads: `node scripts/gh-get-pr-threads.mjs <pr-number>`
-5. Pass PR diff, description, and threads to the `pr-analyst` agent
+5. Pass PR diff, description, threads, and the metadata from step 2 (including `headRefOid` and `isCrossRepository`) to the `pr-analyst` agent
+   - pr-analyst runs the repo's checks only if the working tree is at the PR head; otherwise its Evidence rows are `NOT_RUN` and the status is `NEEDS_REVIEW`. Check out the PR (`gh pr checkout <pr-number>`) before invoking for a fully grounded review
 6. Write the `### Review` block to `~/dev/pr-reviews/<pr-number>-<slug>.md`
 7. If status is `NEEDS_REVIEW`, surface the blocking issues immediately
 8. If status is `DONE`, confirm the report path and offer to post a summary comment via `node scripts/gh-post-comment.mjs`

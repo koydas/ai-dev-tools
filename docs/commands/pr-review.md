@@ -16,7 +16,7 @@ Produces a consistent, structured review for any PR — covering correctness, ri
 ## What it does
 
 1. Fetches the PR diff, description, and existing review threads
-2. Runs `pr-analyst` to produce a structured report
+2. Runs `pr-analyst`, which gathers context (conventions, ADRs, git history, callers of changed symbols), runs the repo's own checks (tests, lint, type-check, declared scans), and produces a structured report — see [ADR-009](../adr/ADR-009-tool-grounded-review.md)
 3. Writes the report to `~/dev/pr-reviews/<pr-number>-<slug>.md`
 4. Surfaces blocking issues immediately if any are found
 
@@ -28,11 +28,14 @@ Produces a consistent, structured review for any PR — covering correctness, ri
 
 Report sections:
 - Summary of changes
+- Evidence — each check with command, source, and `PASS` / `FAIL` / `N/A` / `NOT_RUN`
 - Risk assessment (Low / Medium / High)
 - Blocking issues (must fix before merge)
 - Non-blocking suggestions
 - Test coverage gaps
 - AC coverage checklist (if linked issue found)
+
+Checks only run when the working tree is at the PR head. Run `gh pr checkout 42` first; otherwise the Evidence rows are `NOT_RUN` and the status is `NEEDS_REVIEW`. Fork PRs ask for confirmation before executing anything from the branch.
 
 ## Human gates
 

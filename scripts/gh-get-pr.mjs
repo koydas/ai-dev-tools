@@ -6,7 +6,7 @@
 import { execSync, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-const FIELDS = 'number,title,body,state,author,headRefName,baseRefName,labels,assignees,reviewRequests,reviews,comments,url,createdAt,updatedAt,mergedAt,isDraft';
+const FIELDS = 'number,title,body,state,author,headRefName,headRefOid,baseRefName,isCrossRepository,labels,assignees,reviewRequests,reviews,comments,url,createdAt,updatedAt,mergedAt,isDraft';
 
 export function getPr(identifier, repo) {
   const args = ['pr', 'view', '--json', FIELDS];
