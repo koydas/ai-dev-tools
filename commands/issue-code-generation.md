@@ -17,6 +17,7 @@ Full issue → code → AC validation pipeline.
    - `feature` → `code-builder-feature`
    - `refactor` → `code-builder-refactor`
    - `security` or unclassified → `code-builder` (generic fallback)
+   - The builder writes the patch to the working tree, uncommitted — code-reviewer runs the repo's checks against it in step 6
    - If status is `BLOCKED` or `NEEDS_REVIEW`, stop and surface the output
    - Write checkpoint: pipe agent output to `node scripts/checkpoint.mjs write --repo <owner/repo> <issueId> 03-patch`
 5. **If `--strict` flag is present**, pass to the `code-challenger` agent: the `### Patch` block, the original acceptance criteria, and the issue type
@@ -30,5 +31,5 @@ Full issue → code → AC validation pipeline.
    - `feature` / `security` / fallback → `### Patch` only
    - If `--strict` was used, also include the `### Handoff` block from code-challenger so the reviewer is aware of pre-identified risks
    - Write checkpoint: pipe agent output to `node scripts/checkpoint.mjs write --repo <owner/repo> <issueId> 05-review`
-7. If code-reviewer status is `NEEDS_REVIEW`, write the review report and stop — present blocking issues to the user
+7. If code-reviewer status is `NEEDS_REVIEW`, write the review report and stop — present blocking issues and every Evidence row that is `FAIL` or `NOT_RUN` (with its reason) to the user
 8. If code-reviewer status is `DONE`, present the full patch to the user for review and merge approval

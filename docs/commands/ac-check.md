@@ -17,9 +17,9 @@ Where `42` is the GitHub issue number whose AC you want to check against.
 ## What it does
 
 1. Fetches the issue and extracts acceptance criteria
-2. Diffs the current branch against `main`
-3. Runs `code-reviewer` to map the diff to the AC items
-4. Presents an AC coverage checklist
+2. Diffs the current branch against `main` — committed, uncommitted, and untracked changes
+3. Runs `code-reviewer`, which maps the diff to the AC items and runs the repo's own checks (tests, lint, type-check) against the working tree — see [ADR-009](../adr/ADR-009-tool-grounded-review.md)
+4. Presents an AC coverage checklist and the Evidence table
 
 ## Output
 
@@ -30,8 +30,16 @@ Where `42` is the GitHub issue number whose AC you want to check against.
 - [x] Limit configurable per environment — covered in config/defaults.ts:12
 ```
 
-If all items are covered: `DONE — all AC satisfied`
-If any are missing: `NEEDS_REVIEW — <n> items uncovered`
+```markdown
+**Evidence**
+| Check | Command | Source | Result |
+|---|---|---|---|
+| Tests | `npm test` | `package.json` | PASS — 64/64 |
+| Lint | `npm run lint` | `ci.yml` | FAIL — 1 error |
+```
+
+If all items are covered and every Evidence row is `PASS`, `N/A` or `PRE_EXISTING`: `DONE — all AC satisfied`
+If any item is missing, or any row is `FAIL` / `NOT_RUN`: `NEEDS_REVIEW` with the uncovered items and failing rows
 
 ## See also
 

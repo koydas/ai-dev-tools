@@ -10,7 +10,7 @@
 - A verdict could be `DONE` while the test suite, linter or type-checker was red — the reviewer had no way to know.
 - Builder evidence from the typed-evidence chain (`### Reproduction`, `### Non-regression evidence`) was trusted as written, never verified.
 
-The sister repo `autonomous-dev-loop` documented the same failure mode on its single-shot LLM reviewer (its ADR-0019): a diff with an undeclared dependency, a read-only property assignment and no tests was `APPROVED`.
+The sister repo [`autonomous-dev-loop`](https://github.com/koydas/autonomous-dev-loop) documented the same failure mode on its single-shot LLM reviewer (its ADR-0019): a diff with an undeclared dependency, a read-only property assignment and no tests was `APPROVED`.
 
 Both agents run inside Claude Code, which already has file, search and shell tools. The gap is in the agent definitions, not in the runtime.
 
@@ -22,13 +22,17 @@ Both reviewer agents follow a three-step procedure before producing a verdict:
 2. **Run checks** discovered from the repo itself (`CLAUDE.md`, CI workflows, manifests) — tests, lint, type-check, declared scans — and re-execute the builder's typed evidence. Commands are never invented and their source is recorded.
 3. **Analyze and loop**: investigate each failure; re-run a check at most once, only to confirm a hypothesis.
 
-The result is a mandatory **Evidence** table (`PASS` / `FAIL` / `N/A` / `NOT_RUN`, with command and source). `DONE` requires every row to be `PASS` or `N/A`.
+The result is a mandatory **Evidence** table (`PASS` / `FAIL` / `N/A` / `NOT_RUN` / `PRE_EXISTING`, with command and source). `DONE` requires every row to be `PASS`, `N/A` or `PRE_EXISTING`.
+
+`PRE_EXISTING` marks a failure shown on the base branch by a CI run on the base SHA, cited by URL. It stays visible in the report but does not block: a red base must not hold every PR hostage, and silently ignoring it would hide it from the human gate. The agent never checks out the base to prove it.
 
 Safety boundaries:
 
-- Checks run only when the working tree already reflects the change under review (PR head SHA for `pr-analyst`, applied diff for `code-reviewer`). The agent never checks out, stashes or resets — that would silently mutate the developer's tree.
+- Checks run only when the working tree already reflects the change under review — for `pr-analyst`, HEAD equals the PR head SHA and `git status --porcelain` is empty; for `code-reviewer`, the builder's files are on disk (tracked or untracked). The agent never checks out, stashes, resets or cleans — that would silently mutate the developer's tree.
+- Builders (`code-builder*`) write their patch to the working tree, uncommitted, which makes the `code-reviewer` precondition explicit rather than implied.
+- Each check is bounded by the CI job's `timeout-minutes`, else 10 minutes; a timeout is `NOT_RUN`.
 - Side-effect free commands only: no lockfile-rewriting install, no migration against a real database, no deploy, no network write, no git mutation.
-- Fork PRs (`isCrossRepository`) require user confirmation before executing anything from the branch.
+- Fork PRs (`isCrossRepository`): the `/pr-review` command asks the user and passes the answer to `pr-analyst`. Subagents cannot prompt the user, and gates belong to the pipeline (ADR-001); without an explicit approval the agent executes nothing (`NOT_RUN`).
 
 `scripts/gh-get-pr.mjs` now also fetches `headRefOid` and `isCrossRepository` to support these checks.
 
@@ -43,6 +47,7 @@ Safety boundaries:
 - Review latency and token cost increase by the duration of the test suite
 - `/pr-review <n>` on a PR that is not checked out yields `NOT_RUN` rows and therefore `NEEDS_REVIEW` — deliberate, but it requires a checkout for a clean verdict
 - Command discovery depends on the repo documenting its checks; an undocumented repo gets `N/A` rows and weaker grounding
+- The "fails before the fix" half of a bug reproduction is not re-verified — it would require reverting the fix in the working tree
 
 ## Alternatives considered
 

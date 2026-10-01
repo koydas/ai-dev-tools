@@ -2,6 +2,8 @@
 
 Produces the smallest correct patch that implements a new feature. Derives the implementation plan directly from the acceptance criteria — every AC item must be traceable to code or a deliberate exclusion.
 
+Writes the patch to the working tree and never commits, stages, or pushes it — `code-reviewer` runs the repository's checks against the files on disk ([ADR-009](../docs/adr/ADR-009-tool-grounded-review.md)). New files stay untracked; list them under `**New files**` so the reviewer can find them.
+
 ## Input
 
 From `ticket-analyst`: the full `### Brief` block (summary, scope, AC, constraints), preceded by the issue type `feature` from `issue-router`.

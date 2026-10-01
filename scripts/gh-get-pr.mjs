@@ -9,13 +9,8 @@ import { fileURLToPath } from 'node:url';
 const FIELDS = 'number,title,body,state,author,headRefName,headRefOid,baseRefName,isCrossRepository,labels,assignees,reviewRequests,reviews,comments,url,createdAt,updatedAt,mergedAt,isDraft';
 
 export function getPr(identifier, repo) {
-  const args = ['pr', 'view', '--json', FIELDS];
-  if (/^\d+$/.test(String(identifier))) {
-    args.push(String(identifier));
-  } else {
-    // Branch name passed positionally — gh pr view accepts a branch as a positional arg
-    args.push(String(identifier));
-  }
+  // PR number or branch name — gh pr view accepts both positionally
+  const args = ['pr', 'view', '--json', FIELDS, String(identifier)];
   if (repo) args.push('--repo', repo);
   return JSON.parse(execFileSync('gh', args, { encoding: 'utf8' }));
 }

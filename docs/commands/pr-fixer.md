@@ -18,13 +18,13 @@ Closes the loop between `/pr-review` and a clean, mergeable branch. Takes the bl
 
 1. Reads the blocking issues from the review file
 2. Runs `code-builder` with the blocking issues list and the current diff
-3. Re-runs `code-reviewer` on the updated diff
+3. Re-runs `code-reviewer` on the updated diff — including the repo's checks against the fixed working tree ([ADR-009](../adr/ADR-009-tool-grounded-review.md))
 4. If issues remain, surfaces them — does not loop automatically
 5. If clean, presents the updated patch for human review
 
 ## Output
 
-An updated diff addressing the listed blocking issues, with a re-review confirming resolution.
+An updated diff addressing the listed blocking issues, with a re-review confirming resolution and a fresh Evidence table.
 
 ## Human gates
 
