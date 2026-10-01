@@ -8,14 +8,24 @@ An interactive issue-to-patch pipeline for Claude Code: you type one command, a 
 
 | | |
 |---|---|
-| **Evidence, not opinion** | The reviewer runs the repo's own tests, lint and type-check (discovered from `CLAUDE.md`, CI workflows and manifests — never invented) and re-executes the builder's evidence. `DONE` requires every row of its Evidence table to pass. [ADR-009](docs/adr/ADR-009-tool-grounded-review.md) |
-| **A red main doesn't block your PR — or hide** | A failure is `PRE_EXISTING` only if the merge-base's CI failed the same check, with the run URL cited. The proof comes from a script, not the model; in doubt, it's `FAIL`. |
+| **Evidence, not opinion** | The reviewer runs the repo's own tests, lint and type-check (discovered from `CLAUDE.md`, CI workflows and manifests — never invented) and re-executes the builder's evidence. `DONE` requires every row of its Evidence table to be `PASS`, `N/A` or `PRE_EXISTING`. [ADR-009](docs/adr/ADR-009-tool-grounded-review.md) |
+| **A red main doesn't block your PR — or hide** | A failure is `PRE_EXISTING` only if the merge-base's CI failed the same check, with the run URL cited. The base CI results are fetched by a script (`gh-get-check-runs.mjs`), not recalled by the model; the agent matches them and, in doubt, it's `FAIL`. |
 | **Bug fixes must prove the bug** | Issues are routed to a bug, feature or refactor builder. The bug builder must ship a reproduction test that fails before the fix; the refactor builder must show non-regression. |
 | **Adversarial pass on demand** | `--strict` adds a `code-challenger` agent whose only job is to break the patch before review. |
 | **Never touches your tree behind your back** | Patches land uncommitted; agents never checkout, stash, reset or clean. Fork PRs execute nothing without your explicit approval. |
-| **Resumable** | Five checkpoints per run; `/resume` restarts from the first missing step after a rate limit or crash. |
+| **Resumable** | Up to five checkpoints per run (four without `--strict`); `/resume` restarts from the first missing step after a rate limit or crash. |
 
 Each of these is a named pattern documented in [`agent-patterns`](https://github.com/koydas/agent-patterns): `router`, `sequential-pipeline`, `typed-evidence-chain`, `critic-pair`, `tool-grounded-review`, `checkpoint-resume`, `human-gate`.
+
+**Try it** (Node ≥ 20, Claude Code, authenticated `gh`):
+
+```bash
+git clone https://github.com/koydas/ai-dev-tools ~/dev/ai-dev-tools
+node ~/dev/ai-dev-tools/scripts/onboarding.mjs
+# then, in Claude Code inside any repo:  /issue-code-generation <issue-number>
+```
+
+Full setup: [Setup](#setup).
 
 ---
 
@@ -35,7 +45,7 @@ flowchart LR
     V -->|NEEDS_REVIEW| S([Stops with failing evidence])
 ```
 
-**Example run** (illustrative output):
+**Example run** (illustrative, not a recorded run):
 
 ```bash
 # In your terminal
@@ -46,10 +56,13 @@ body:   As a DevOps engineer, I want requests capped per client key...
 # In Claude Code
 > /issue-code-generation 42
 
+[issue-router]    Classifying issue #42...
+  → feature
+
 [ticket-analyst]  Parsing issue #42...
   → DONE — brief: rate-limiting middleware, scope: api-gateway/middleware/
 
-[code-builder]    Generating patch...
+[code-builder-feature]  Generating patch...
   → DONE — 3 files changed, tests included
 
 [code-reviewer]   Validating against acceptance criteria, running checks...
@@ -210,6 +223,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for how to add agents and commands.
 
 | Repo | What it demonstrates |
 |---|---|
-| [`autonomous-dev-loop`](https://github.com/koydas/autonomous-dev-loop) | Fully autonomous GitHub-native SDLC — Issue → AI coder → PR → AI reviewer → iterative loop → human merge gate. Groq-backed, GitHub Actions orchestration, prompt files loaded at runtime. |
+| [`autonomous-dev-loop`](https://github.com/koydas/autonomous-dev-loop) | Bounded-autonomy GitHub-native SDLC — Issue → AI coder → PR → AI reviewer → iterative loop → human merge gate. Groq-backed, GitHub Actions orchestration, prompt files loaded at runtime. |
 | [`agent-patterns`](https://github.com/koydas/agent-patterns) | The multi-agent patterns this toolbox implements — diagrams, trade-offs, failure modes, runnable code. |
-| [`fullstack-pilot`](https://github.com/koydas/fullstack-pilot) | Polyglot multi-service stack: React/Vite, Node/Express, Flask, .NET 8 — across MongoDB, PostgreSQL, and SQL Server. Includes CI/CD workflows, ADRs, and a Mermaid architecture diagram. |
+| [`fullstack-pilot`](https://github.com/koydas/fullstack-pilot) | Polyglot multi-service stack: React/Vite, Node/Express, Flask, .NET — across MongoDB, PostgreSQL, and SQL Server. Includes CI/CD workflows, ADRs, and a Mermaid architecture diagram. |
