@@ -5,7 +5,7 @@
 // Transport: GraphQL first. When it fails (e.g. a Claude Code cloud session, whose proxy refuses
 // GraphQL), everything is fetched over REST; resolution state then comes from the session's
 // `pulls/{n}/ccr/review_threads` route when it exists, else it is reported unknown (`null`).
-// The output's `source` says which: `graphql` | `rest+ccr` | `rest`.
+// The output's `source` says which: `graphql` | `rest+ccr` | `rest`. Pattern: ADR-011.
 
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
