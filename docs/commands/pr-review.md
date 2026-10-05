@@ -43,6 +43,10 @@ Each finding is tagged `[severity · origin]`: severity `High` / `Medium` / `Low
 
 Checks only run when the working tree is exactly the PR head (HEAD = PR head SHA, clean `git status`). Run `gh pr checkout 42` on a clean tree first; otherwise the Evidence rows are `NOT_RUN` and the status is `NEEDS_REVIEW`. A check that fails identically on the base branch's CI is reported as `PRE_EXISTING` and does not block.
 
+## Without an authenticated `gh`
+
+If `gh auth status` fails (e.g. a Claude Code cloud session), the command fetches the PR through the GitHub MCP server and normalizes it with `scripts/normalize-pr.mjs`, so pr-analyst receives the same fields ([ADR-010](../adr/ADR-010-github-mcp-fallback-transport.md)). Base CI results are not available in that mode: a check that fails is reported `FAIL`, never `PRE_EXISTING`.
+
 ## Human gates
 
 1. **Invocation** — you decide when to run it
