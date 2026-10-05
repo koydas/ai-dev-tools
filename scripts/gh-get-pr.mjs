@@ -55,7 +55,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
   let identifier;
   let targetRepo = repo;
-  const positional = args.filter((a, i) => !a.startsWith('--') && args[i - 1] !== '--branch' && args[i - 1] !== '--repo');
+  // An empty argument (e.g. an empty quoted "$ARGUMENTS") means no PR ref: fall back to the current branch.
+  const positional = args.filter((a, i) => a.trim() !== '' && !a.startsWith('--') && args[i - 1] !== '--branch' && args[i - 1] !== '--repo');
   if (branchIdx !== -1) {
     identifier = args[branchIdx + 1];
   } else if (positional.length) {

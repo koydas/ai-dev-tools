@@ -5,12 +5,12 @@ Fetch the current PR, run a structured review, and write the report to `~/dev/pr
 ## Steps
 
 1. Determine the PR to review — `$ARGUMENTS` accepts `42`, `#42`, `owner/repo#42` or a PR URL (`https://github.com/owner/repo/pull/42`):
-   - If an argument is provided, pass it as is to the script below
-   - Otherwise, the script uses the current branch (auto-detects head branch)
-2. Fetch PR metadata (title, description, author, labels): `node scripts/gh-get-pr.mjs $ARGUMENTS`. Its output carries `number` and `repository` (`owner/repo`); every later step uses them, passing `--repo <repository>`
+   - If an argument is provided, pass it quoted, as a single argument: `node scripts/gh-get-pr.mjs "$ARGUMENTS"` — unquoted, the shell reads `#42` as a comment and `&` in a URL as a control operator
+   - Otherwise, run `node scripts/gh-get-pr.mjs` with no argument — the script uses the current branch (auto-detects head branch)
+2. Fetch PR metadata (title, description, author, labels) with the command from step 1. Its output carries `number` and `repository` (`owner/repo`); every later step uses them, passing `--repo <repository>`
 3. Fetch the PR diff (changed hunks): `node scripts/gh-get-pr.mjs` exports `getPrDiff(<number>, <repository>)`, or run `gh pr diff <number> --repo <repository>` directly — pass the full patch to pr-analyst
 4. Fetch reviewer comment threads: `node scripts/gh-get-pr-threads.mjs <number> --repo <repository>`
-5. Check whether the PR is checked out: the working directory is a clone of `<repository>` and `git rev-parse HEAD` equals `headRefOid`. If not, skip steps 6 and 7 — pr-analyst will report every check `NOT_RUN`, so there is nothing to approve or compare
+5. Check whether the PR is checked out: `gh repo view --json nameWithOwner -q .nameWithOwner` equals `<repository>` (case-insensitive) and `git rev-parse HEAD` equals `headRefOid`. If not, skip steps 6 and 7 — pr-analyst will report every check `NOT_RUN`, so there is nothing to approve or compare
 6. Fetch the base branch's CI results: `node scripts/gh-get-check-runs.mjs --merge-base origin/<baseRefName> --repo <repository>` (check runs of the merge-base commit). If the script fails, pass no base CI input — pr-analyst then reports failures as `FAIL`, never `PRE_EXISTING`
 7. **Fork gate** — if `isCrossRepository` is true, ask the user whether pr-analyst may execute the repository's checks on code from the fork. Record the answer as the fork execution approval (yes / no)
 8. Pass PR diff, description, threads, the metadata from step 2 (including `headRefOid` and `isCrossRepository`), the base CI results from step 6, and the fork execution approval to the `pr-analyst` agent
