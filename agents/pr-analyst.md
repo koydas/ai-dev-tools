@@ -28,7 +28,7 @@ Use what you find; only cite it in the report when it changes a finding.
 Only when the working tree is exactly the PR head: `git rev-parse HEAD` equals the PR head SHA **and** `git status --porcelain` is empty (local edits or untracked files would be attributed to the PR). Never check out, stash, reset, or clean to get there — otherwise every check is `NOT_RUN` with the reason (`HEAD is not the PR head` / `working tree is dirty`).
 
 - **Discover** the commands from the repo itself, in this order: `CLAUDE.md` / `AGENTS.md`, CI workflow files (`.github/workflows/*.yml`), manifests (`package.json` scripts, `*.csproj` / `*.sln`, `Makefile`). Never invent a command; record its source.
-- **Run**: tests (scoped to the touched area when the runner supports it, else the full suite), linter / formatter check, type-check, and any security or dependency scan the repo already declares.
+- **Run**: tests (scoped to the touched area when the runner supports it, else the full suite), linter / formatter check, type-check, any coverage gate the CI declares for a touched module (e.g. `c8 --check-coverage`, `coverlet` thresholds — run the gate exactly as declared, with its thresholds), and any security or dependency scan the repo already declares.
 - **Timeout**: bound each check by the CI job's `timeout-minutes` when declared, else 10 minutes. On timeout, stop it → `NOT_RUN — timeout after <n> min`.
 - **Side-effect free only**: no install that rewrites a lockfile, no migration against a real database, no deploy, no network write, no git mutation.
 - **Fork PRs**: if `isCrossRepository` is true and the input does not carry an explicit fork execution approval, execute nothing from the branch — every check is `NOT_RUN — fork PR, execution not approved`. The agent never asks the user itself; the command owns that gate.
@@ -37,6 +37,16 @@ Only when the working tree is exactly the PR head: `git rev-parse HEAD` equals t
 ### 3. Analyze and loop
 
 For each failing check or suspicious finding, read the relevant code and decide whether it is a blocking issue. Re-run a check only to confirm a hypothesis — at most once per check.
+
+Tag every finding with a **severity** and an **origin**:
+
+- Severity: `High` (incorrect behavior, security exposure, data loss), `Medium` (a failure path that is not handled, or a real gap in a guarantee the PR claims), `Low` (robustness, clarity, cost).
+- Origin:
+  - `introduced`: the defect is in lines this PR adds or changes;
+  - `amplified`: the defect already existed, but this PR makes it reachable or more likely, for example a new error path that ends in an unhandled crash;
+  - `pre-existing`: the defect is in code the PR does not change and does not make worse. Report it only when it concerns the area the PR touches.
+
+Only an `introduced` finding can be blocking. An `amplified` finding of severity `High` is blocking too. Every other finding is a non-blocking suggestion, reported for a follow-up issue.
 
 ## Output
 
@@ -58,6 +68,7 @@ One paragraph describing what this PR does.
 |---|---|---|---|
 | Tests | `node --test` | `CLAUDE.md` | PASS — 42/42 |
 | Lint | `npm run lint` | `package.json` | FAIL — 2 errors (see Blocking issues) |
+| Coverage | `npx c8 --check-coverage --lines 80 …` | `test.yml` | PASS — 96.7% lines / 90.1% branches |
 | Type-check | — | — | N/A — no type-checker configured |
 | Scan | `dotnet list package --vulnerable` | `ci.yml` | NOT_RUN — HEAD is not the PR head |
 | Format | `dotnet format --verify-no-changes` | `ci.yml` | PRE_EXISTING — fails on base `a1b2c3d` too: <check run url> |
@@ -66,10 +77,11 @@ One paragraph describing what this PR does.
 - Low / Medium / High — reason
 
 **Blocking issues**
-1. `path/to/file.ext:line` — description (must fix before merge)
+1. **[High · introduced]** `path/to/file.ext:line` — description (must fix before merge)
 
 **Non-blocking suggestions**
-- `path/to/file.ext:line` — description (optional improvement)
+- **[Medium · amplified]** `path/to/file.ext:line` — description and concrete failure scenario (follow-up)
+- **[Low · pre-existing]** `path/to/file.ext:line` — description (optional improvement)
 
 **Test coverage**
 - [ ] Scenario not covered

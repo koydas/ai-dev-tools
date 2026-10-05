@@ -32,6 +32,8 @@ Report sections:
 - Risk assessment (Low / Medium / High)
 - Blocking issues (must fix before merge)
 - Non-blocking suggestions
+
+Each finding is tagged `[severity · origin]`: severity `High` / `Medium` / `Low`, origin `introduced` / `amplified` / `pre-existing`. Only `introduced` findings, plus `amplified` findings of severity `High`, can block. Coverage gates declared in CI for a touched module are run and reported as an Evidence row.
 - Test coverage gaps
 - AC coverage checklist (if linked issue found)
 
