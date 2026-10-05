@@ -63,13 +63,19 @@ test('mapRestPr: REST PR + activity → every gh pr view field', () => {
   });
 });
 
-test('mapRestPr: open, closed, draft, and missing optional fields', () => {
+test('mapRestPr: open, closed, draft; data the input does not carry is null, not an empty list', () => {
   assert.equal(mapRestPr({ ...REST_PR, merged: false, merged_at: null, state: 'open' }).state, 'OPEN');
   assert.equal(mapRestPr({ ...REST_PR, merged: false, merged_at: null }).state, 'CLOSED');
   const pr = mapRestPr({ number: 1, draft: true, head: { sha: SHA } });
-  assert.deepEqual([pr.isDraft, pr.title, pr.body, pr.labels, pr.assignees, pr.reviews, pr.comments, pr.reviewRequests],
-    [true, '', '', [], [], [], [], []]);
-  assert.equal(pr.state, null);
+  assert.deepEqual([pr.isDraft, pr.title, pr.body, pr.state], [true, '', '', null]);
+  assert.deepEqual([pr.assignees, pr.reviewRequests, pr.reviews, pr.comments], [null, null, null, null]);
+  // An absent labels key is an empty list: the MCP response omits it when a PR has no labels.
+  assert.deepEqual(pr.labels, []);
+});
+
+test('mapRestPr: present-but-empty lists stay empty lists', () => {
+  const pr = mapRestPr({ ...REST_PR, assignees: [], requested_reviewers: [] }, { reviews: [], issueComments: [] });
+  assert.deepEqual([pr.assignees, pr.reviewRequests, pr.reviews, pr.comments], [[], [], [], []]);
 });
 
 test('mapRestPr: fork, deleted fork and case-insensitive same repo', () => {

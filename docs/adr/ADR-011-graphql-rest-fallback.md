@@ -29,6 +29,8 @@ A script that reads GitHub through GraphQL (directly or via a `gh` subcommand th
 | `gh-get-pr.mjs` | `gh pr view --json <fields>` | `pulls/{n}` (or `pulls?head=<owner>:<branch>`), reviews, issue comments | `mapRestPr` |
 | `gh-get-pr-threads.mjs` | `gh pr view` + `reviewThreads` query | reviews, requested reviewers, issue comments, review comments, `ccr/review_threads` | `buildThreadsFromRest` |
 
+`normalize-pr.mjs` (the MCP path of ADR-010) delegates to `mapRestPr`: the GitHub MCP `pull_request_read` `get` response is the REST object with empty fields omitted, so one mapper serves both transports. Fields that response does not carry (`assignees`, `requested_reviewers`, reviews, comments) come out `null`. `labels` is the one key whose absence means empty: observed on real responses with and without labels.
+
 `gh pr diff` already uses REST and needs no fallback.
 
 This pattern applies when `gh` is authenticated but GraphQL is refused. When `gh` itself is unusable, commands use the GitHub MCP fallback of ADR-010.

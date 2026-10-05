@@ -37,9 +37,14 @@ export function repoFromPrUrl(url) {
 
 const FIELDS = 'number,title,body,state,author,headRefName,headRefOid,baseRefName,isCrossRepository,labels,assignees,reviewRequests,reviews,comments,url,createdAt,updatedAt,mergedAt,isDraft';
 
-// Pure: REST `pulls/{n}` object + its reviews and issue comments → the `gh pr view --json FIELDS` shape.
-// A deleted head repository (fork) counts as cross-repository, so the fork gate still asks.
-export function mapRestPr(pr, { reviews = [], issueComments = [] } = {}) {
+// Pure: REST `pulls/{n}` object (or the GitHub MCP `pull_request_read` `get` response, which is the
+// same object with empty fields omitted) + its reviews and issue comments → the `gh pr view --json
+// FIELDS` shape. A deleted head repository (fork) counts as cross-repository, so the fork gate still
+// asks. Data the input does not carry is null (unknown), never an empty default (ADR-011):
+// reviews / comments not passed, `assignees` / `requested_reviewers` keys absent. Labels are the
+// exception: the MCP response omits the key when a PR has none (observed on real responses), so an
+// absent `labels` is an empty list.
+export function mapRestPr(pr, { reviews, issueComments } = {}) {
   if (!pr || typeof pr !== 'object' || !Number.isInteger(pr.number)) {
     throw new Error('not a pull request object: missing integer "number"');
   }
@@ -47,9 +52,9 @@ export function mapRestPr(pr, { reviews = [], issueComments = [] } = {}) {
   const baseRepo = pr.base?.repo?.full_name ?? null;
   const merged = pr.merged === true || Boolean(pr.merged_at);
   const activity = mapRestPrActivity({
-    reviews,
+    reviews: reviews ?? [],
     requested: { users: pr.requested_reviewers ?? [], teams: pr.requested_teams ?? [] },
-    issueComments,
+    issueComments: issueComments ?? [],
   });
   return {
     number: pr.number,
@@ -62,10 +67,10 @@ export function mapRestPr(pr, { reviews = [], issueComments = [] } = {}) {
     baseRefName: pr.base?.ref ?? null,
     isCrossRepository: !headRepo || !baseRepo || headRepo.toLowerCase() !== baseRepo.toLowerCase(),
     labels: (pr.labels ?? []).map((l) => ({ name: typeof l === 'string' ? l : l?.name ?? null })),
-    assignees: (pr.assignees ?? []).map((a) => ({ login: a?.login ?? null })),
-    reviewRequests: activity.reviewRequests,
-    reviews: activity.reviews,
-    comments: activity.prComments,
+    assignees: pr.assignees === undefined ? null : pr.assignees.map((a) => ({ login: a?.login ?? null })),
+    reviewRequests: pr.requested_reviewers === undefined ? null : activity.reviewRequests,
+    reviews: reviews === undefined ? null : activity.reviews,
+    comments: issueComments === undefined ? null : activity.prComments,
     url: pr.html_url ?? null,
     createdAt: pr.created_at ?? null,
     updatedAt: pr.updated_at ?? null,

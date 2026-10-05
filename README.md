@@ -155,7 +155,7 @@ Next step and what to pass forward
 | `gh-get-pr.mjs` | Fetch PR by number, `owner/repo#n`, URL or source branch — GraphQL, else REST (`source` in output, ADR-011) | CLI / via commands |
 | `gh-get-pr-threads.mjs` | Fetch reviewer comment threads for a PR — GraphQL, else REST (resolution from the session's `ccr/review_threads` route, else `null`) | CLI / via commands |
 | `gh-transport.mjs` | Shared GitHub transport: GraphQL → REST fallback, paginated REST lists, repo detection, REST → `gh pr view` mappers (ADR-011) | library |
-| `normalize-pr.mjs` | Map a PR fetched through GitHub MCP / REST to the `gh-get-pr.mjs` fields (ADR-010) | CLI / via commands |
+| `normalize-pr.mjs` | Map a PR fetched through GitHub MCP / REST to the `gh-get-pr.mjs` fields — delegates to `gh-get-pr.mjs` `mapRestPr` (ADR-010, ADR-011) | CLI / via commands |
 | `gh-get-check-runs.mjs` | Fetch the CI check runs of a commit (or of the merge-base with a branch) → JSON, for `PRE_EXISTING` evidence | via `/pr-review`, `/ac-check`, `/issue-code-generation`, `/pr-fixer` |
 | `gh-post-comment.mjs` | Post a comment to a GitHub issue | CLI / via commands |
 | `gh-my-issues.mjs` | List issues assigned to current user | CLI |

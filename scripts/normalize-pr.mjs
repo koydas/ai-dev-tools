@@ -1,15 +1,17 @@
 #!/usr/bin/env node
 // Normalize a PR fetched without `gh` (GitHub REST `pulls/{n}` JSON, or the GitHub MCP
 // `pull_request_read` method `get`) to the field names gh-get-pr.mjs emits (ADR-010).
+// The mapping itself is gh-get-pr.mjs's mapRestPr (ADR-011); this script adds the input checks the
+// MCP path needs and the `repository` field. Fields the input does not carry (reviews, comments,
+// and assignees / review requests when absent) are null — fetch them separately.
 // Usage: node scripts/normalize-pr.mjs <file.json>     (or JSON on stdin)
 // Node ≥ 20
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { mapRestPr } from './gh-get-pr.mjs';
 
-const pick = (obj, ...keys) => keys.map((k) => obj?.[k]).find((v) => v !== undefined) ?? null;
-
-// Pure: REST / MCP PR object → gh-get-pr.mjs shape (subset the commands and agents use).
+// Pure: REST / MCP PR object → gh-get-pr.mjs shape, plus `repository` (the base repository).
 export function normalizePr(raw) {
   if (!raw || typeof raw !== 'object' || !Number.isInteger(raw.number)) {
     throw new Error('not a pull request object: missing integer "number"');
@@ -18,29 +20,7 @@ export function normalizePr(raw) {
   if (typeof headSha !== 'string' || !/^[0-9a-f]{40}$/i.test(headSha)) {
     throw new Error('pull request has no 40-char head.sha');
   }
-  const headRepo = raw.head?.repo?.full_name ?? null;
-  const baseRepo = raw.base?.repo?.full_name ?? null;
-  const merged = raw.merged === true || Boolean(raw.merged_at);
-  const state = merged ? 'MERGED' : String(raw.state ?? '').toUpperCase() || null;
-  return {
-    number: raw.number,
-    title: raw.title ?? '',
-    body: raw.body ?? '',
-    state,
-    author: { login: raw.user?.login ?? null },
-    headRefName: raw.head?.ref ?? null,
-    headRefOid: headSha,
-    baseRefName: raw.base?.ref ?? null,
-    // Unknown head repo (deleted fork) counts as cross-repository: the fork gate must ask.
-    isCrossRepository: !headRepo || !baseRepo || headRepo.toLowerCase() !== baseRepo.toLowerCase(),
-    labels: (raw.labels ?? []).map((l) => ({ name: typeof l === 'string' ? l : l?.name ?? null })),
-    url: pick(raw, 'html_url', 'url'),
-    isDraft: pick(raw, 'draft', 'isDraft') === true,
-    createdAt: pick(raw, 'created_at', 'createdAt'),
-    updatedAt: pick(raw, 'updated_at', 'updatedAt'),
-    mergedAt: pick(raw, 'merged_at', 'mergedAt'),
-    repository: baseRepo,
-  };
+  return { ...mapRestPr(raw), repository: raw.base?.repo?.full_name ?? null };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
