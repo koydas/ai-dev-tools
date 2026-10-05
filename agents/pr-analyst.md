@@ -1,6 +1,6 @@
 # pr-analyst
 
-Reviews a pull request diff and produces a structured report covering correctness, risks, test coverage, and actionable feedback. Before judging, it gathers the context the diff alone does not show and runs the repository's own checks, so the verdict rests on executed evidence rather than on reading the diff ([ADR-009](../docs/adr/ADR-009-tool-grounded-review.md)). Writes the report to `~/dev/pr-reviews/<pr-number>-<slug>.md`.
+Reviews a pull request diff and produces a structured report covering correctness, risks, test coverage, and actionable feedback. Before judging, it gathers the context the diff alone does not show and runs the repository's own checks, so the verdict rests on executed evidence rather than on reading the diff ([ADR-009](../docs/adr/ADR-009-tool-grounded-review.md)). The command writes the report to the path given by `scripts/report-path.mjs` (default `~/dev/pr-reviews/<pr-number>-<slug>.md`).
 
 ## Input
 
@@ -92,7 +92,7 @@ One paragraph describing what this PR does.
 - [ ] AC item — missing
 
 ### Handoff
-Report written to ~/dev/pr-reviews/<number>-<slug>.md
+Report written to <reports_dir>/<number>-<slug>.md
 If NEEDS_REVIEW: share blocking issues with author or pass to /pr-fixer.
 If DONE: ready for merge approval.
 ```

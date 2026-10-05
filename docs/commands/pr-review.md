@@ -21,7 +21,7 @@ With `owner/repo#42` or a URL, every script receives `--repo owner/repo`, so the
 
 1. Fetches the PR diff, description, and existing review threads
 2. Runs `pr-analyst`, which gathers context (conventions, ADRs, git history, callers of changed symbols), runs the repo's own checks (tests, lint, type-check, declared scans), and produces a structured report — see [ADR-009](../adr/ADR-009-tool-grounded-review.md)
-3. Writes the report to `~/dev/pr-reviews/<pr-number>-<slug>.md`
+3. Writes the report to `<reports_dir>/<pr-number>-<slug>.md`, resolved by `scripts/report-path.mjs`: `AI_DEV_TOOLS_REPORTS_DIR`, else `reports_dir` in `configs/paths.yaml` (default `~/dev/pr-reviews`). The slug comes from the PR title read from the PR JSON, never from the command line. A `reports_dir` inside the current git working tree is refused unless git-ignored: a report there would make the tree dirty, and the next review would report every check `NOT_RUN`. In a cloud session, point `AI_DEV_TOOLS_REPORTS_DIR` at the scratchpad or another directory outside the clone
 4. Surfaces blocking issues immediately if any are found
 
 ## Output format

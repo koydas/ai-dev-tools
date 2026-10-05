@@ -1,6 +1,6 @@
 # /pr-review
 
-Fetch the current PR, run a structured review, and write the report to `~/dev/pr-reviews/`.
+Fetch the current PR, run a structured review, and write the report to the reports directory (`node scripts/report-path.mjs --dir`, default `~/dev/pr-reviews/`).
 
 ## Steps
 
@@ -15,6 +15,6 @@ Fetch the current PR, run a structured review, and write the report to `~/dev/pr
 7. **Fork gate** — if `isCrossRepository` is true, ask the user whether pr-analyst may execute the repository's checks on code from the fork. Record the answer as the fork execution approval (yes / no)
 8. Pass PR diff, description, threads, the metadata from step 2 (including `headRefOid` and `isCrossRepository`), the base CI results from step 6, and the fork execution approval to the `pr-analyst` agent
    - pr-analyst runs the repo's checks only if the working tree is exactly the PR head (HEAD = `headRefOid`, clean `git status`); otherwise its Evidence rows are `NOT_RUN` and the status is `NEEDS_REVIEW`. Check out the PR (`gh pr checkout <number> --repo <repository>`, from a clone of `<repository>`) on a clean tree before invoking for a fully grounded review
-9. Write the `### Review` block to `~/dev/pr-reviews/<pr-number>-<slug>.md`
+9. Write the `### Review` block to the path printed by `node scripts/gh-get-pr.mjs <number> --repo <repository> | node scripts/report-path.mjs --from-pr` — never put the PR title on a command line: it is author-controlled text
 10. If status is `NEEDS_REVIEW`, surface the blocking issues and every Evidence row that is `FAIL` or `NOT_RUN` (with its reason) immediately
 11. If status is `DONE`, confirm the report path and offer to post a summary comment via `node scripts/gh-post-comment.mjs <number> --repo <repository>`
