@@ -5,6 +5,7 @@
 // Node ≥ 20, requires `gh` CLI authenticated
 
 import { execFileSync } from 'node:child_process';
+import { normalizePr } from './normalize-pr.mjs';
 
 const REPO_PATTERN = /^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/;
 
@@ -29,19 +30,11 @@ export const toComments = (comments) => (comments ?? []).map((c) => ({
   author: toAuthor(c.user), body: c.body ?? '', createdAt: c.created_at, url: c.html_url,
 }));
 
+// normalizePr (ADR-010) carries the fields both transports share; REST adds what the MCP fallback lacks.
 export function toPr(pr, { reviews = [], comments = [] } = {}) {
-  const headRepo = pr.head?.repo?.full_name ?? null;
+  const { repository: _repository, ...base } = normalizePr(pr);
   return {
-    number: pr.number,
-    title: pr.title,
-    body: pr.body ?? '',
-    state: pr.merged_at ? 'MERGED' : String(pr.state).toUpperCase(),
-    author: toAuthor(pr.user),
-    headRefName: pr.head?.ref,
-    headRefOid: pr.head?.sha,
-    baseRefName: pr.base?.ref,
-    // A deleted fork leaves head.repo null: still cross-repository.
-    isCrossRepository: headRepo === null || headRepo.toLowerCase() !== String(pr.base?.repo?.full_name).toLowerCase(),
+    ...base,
     labels: toLabels(pr.labels),
     assignees: toAssignees(pr.assignees),
     reviewRequests: [
@@ -52,11 +45,6 @@ export function toPr(pr, { reviews = [], comments = [] } = {}) {
       author: toAuthor(r.user), state: r.state, body: r.body ?? '', submittedAt: r.submitted_at ?? null, commit: { oid: r.commit_id },
     })),
     comments: toComments(comments),
-    url: pr.html_url,
-    createdAt: pr.created_at,
-    updatedAt: pr.updated_at,
-    mergedAt: pr.merged_at ?? null,
-    isDraft: pr.draft === true,
   };
 }
 

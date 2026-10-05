@@ -4,12 +4,13 @@ import { repoPath, toPr, toIssue } from '../scripts/gh-rest.mjs';
 import { pickPrForBranch } from '../scripts/gh-get-pr.mjs';
 import { toIssueList } from '../scripts/gh-my-issues.mjs';
 
+const SHA = 'a'.repeat(40);
 const user = (login) => ({ login, id: 1, type: 'User' });
 const restPr = (overrides = {}) => ({
   number: 42, title: 'Add x', body: null, state: 'open', merged_at: null, draft: false,
   user: user('alice'), html_url: 'https://github.com/o/r/pull/42',
   created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-02T00:00:00Z',
-  head: { ref: 'feat/x', sha: 'abc123', repo: { full_name: 'o/r' } },
+  head: { ref: 'feat/x', sha: SHA, repo: { full_name: 'o/r' } },
   base: { ref: 'main', repo: { full_name: 'o/r' } },
   labels: [{ name: 'bug', color: 'f00', description: null }],
   assignees: [user('bob')],
@@ -25,15 +26,15 @@ test('repoPath: explicit repo, placeholders, malformed repo', () => {
 
 test('toPr: REST pull → gh pr view --json shape', () => {
   const pr = toPr(restPr(), {
-    reviews: [{ user: user('dave'), state: 'APPROVED', body: 'ok', submitted_at: '2026-01-03T00:00:00Z', commit_id: 'abc123' }],
+    reviews: [{ user: user('dave'), state: 'APPROVED', body: 'ok', submitted_at: '2026-01-03T00:00:00Z', commit_id: SHA }],
     comments: [{ user: user('erin'), body: 'hi', created_at: '2026-01-04T00:00:00Z', html_url: 'u' }],
   });
   assert.deepEqual(pr, {
     number: 42, title: 'Add x', body: '', state: 'OPEN', author: { login: 'alice' },
-    headRefName: 'feat/x', headRefOid: 'abc123', baseRefName: 'main', isCrossRepository: false,
+    headRefName: 'feat/x', headRefOid: SHA, baseRefName: 'main', isCrossRepository: false,
     labels: [{ name: 'bug', color: 'f00', description: '' }], assignees: [{ login: 'bob' }],
     reviewRequests: [{ login: 'carol' }, { name: 'Core', slug: 'core' }],
-    reviews: [{ author: { login: 'dave' }, state: 'APPROVED', body: 'ok', submittedAt: '2026-01-03T00:00:00Z', commit: { oid: 'abc123' } }],
+    reviews: [{ author: { login: 'dave' }, state: 'APPROVED', body: 'ok', submittedAt: '2026-01-03T00:00:00Z', commit: { oid: SHA } }],
     comments: [{ author: { login: 'erin' }, body: 'hi', createdAt: '2026-01-04T00:00:00Z', url: 'u' }],
     url: 'https://github.com/o/r/pull/42', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-02T00:00:00Z',
     mergedAt: null, isDraft: false,
@@ -44,13 +45,15 @@ test('toPr: merged, closed, draft, deleted author', () => {
   assert.equal(toPr(restPr({ state: 'closed', merged_at: '2026-01-05T00:00:00Z' })).state, 'MERGED');
   assert.equal(toPr(restPr({ state: 'closed' })).state, 'CLOSED');
   assert.equal(toPr(restPr({ draft: true })).isDraft, true);
-  assert.equal(toPr(restPr({ user: null })).author, null);
+  // normalizePr (ADR-010) keeps the object for a deleted author.
+  assert.deepEqual(toPr(restPr({ user: null })).author, { login: null });
+  assert.throws(() => toPr(restPr({ head: { ref: 'x', sha: 'short', repo: null } })), /head.sha/);
 });
 
 test('toPr: fork, case-insensitive same repo, deleted fork', () => {
-  assert.equal(toPr(restPr({ head: { ref: 'x', sha: 's', repo: { full_name: 'fork/r' } } })).isCrossRepository, true);
-  assert.equal(toPr(restPr({ head: { ref: 'x', sha: 's', repo: { full_name: 'O/R' } } })).isCrossRepository, false);
-  assert.equal(toPr(restPr({ head: { ref: 'x', sha: 's', repo: null } })).isCrossRepository, true);
+  assert.equal(toPr(restPr({ head: { ref: 'x', sha: SHA, repo: { full_name: 'fork/r' } } })).isCrossRepository, true);
+  assert.equal(toPr(restPr({ head: { ref: 'x', sha: SHA, repo: { full_name: 'O/R' } } })).isCrossRepository, false);
+  assert.equal(toPr(restPr({ head: { ref: 'x', sha: SHA, repo: null } })).isCrossRepository, true);
 });
 
 test('toIssue: REST issue → gh issue view --json shape, comments only when given', () => {
