@@ -99,6 +99,7 @@ node --test
 - **Scripts — CLI detection**: use `fileURLToPath(import.meta.url)` to compare against `process.argv[1]` (Windows-compatible)
 - **Scripts — portability**: no Unix utilities (`tail`, `head`, `grep`) — use native git options or plain JS
 - **Scripts — GitHub API**: always pass `--paginate` to `gh api` to avoid silently losing data past the first page
+- **Scripts — GraphQL fallback**: a script that uses GraphQL (incl. `gh pr view` / `gh repo view`) falls back to REST when it fails — pure, tested REST→shape mappers; a field REST cannot provide is `null` (unknown), never a default; output carries `source` ([ADR-011](docs/adr/ADR-011-graphql-rest-fallback.md), shared helpers in `scripts/gh-transport.mjs`)
 - **Scripts — structure**: export the main functions AND provide a CLI entrypoint (`if process.argv[1] === fileURLToPath(import.meta.url)`)
 - **Agents / Commands / Skills**: Markdown only — no code
 - **Commands delegate**: a command is a pipeline definition, never an implementation

@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { normalizePr } from '../scripts/normalize-pr.mjs';
+import { mapRestPr } from '../scripts/gh-get-pr.mjs';
 
 const SHA = '314d1bb9b0b23cc8bfe727e03c77c99a97771fef';
 
@@ -19,6 +20,8 @@ test('normalizePr: MCP shape → gh-get-pr.mjs fields', () => {
     number: 176, title: 'fix(guardrails): docs/', body: 'b', state: 'OPEN', author: { login: 'koydas' },
     headRefName: 'chore/x', headRefOid: SHA, baseRefName: 'main', isCrossRepository: false,
     labels: [{ name: 'review-approved' }, { name: 'auto-fix-attempt-1' }],
+    // Not carried by the MCP `get` response: unknown, not empty (ADR-011).
+    assignees: null, reviewRequests: null, reviews: null, comments: null,
     url: 'https://github.com/koydas/autonomous-dev-loop/pull/176', isDraft: false,
     createdAt: '2026-10-05T14:31:21Z', updatedAt: '2026-10-05T14:33:29Z', mergedAt: null,
     repository: 'koydas/autonomous-dev-loop',
@@ -50,4 +53,10 @@ test('normalizePr: rejects objects that are not a PR or lack a full head SHA', (
   assert.throws(() => normalizePr({ number: '176' }), /missing integer "number"/);
   assert.throws(() => normalizePr({ ...MCP, head: { ...MCP.head, sha: '314d1bb' } }), /40-char head.sha/);
   assert.throws(() => normalizePr({ ...MCP, head: undefined }), /40-char head.sha/);
+});
+
+test('normalizePr: delegates the mapping to gh-get-pr.mjs mapRestPr (same fields, plus repository)', () => {
+  const { repository, ...rest } = normalizePr(MCP);
+  assert.equal(repository, 'koydas/autonomous-dev-loop');
+  assert.deepEqual(rest, mapRestPr(MCP));
 });
