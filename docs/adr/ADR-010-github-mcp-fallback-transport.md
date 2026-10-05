@@ -36,3 +36,7 @@ Write operations (`gh-post-comment.mjs`) may use the MCP equivalent only after t
 **Negative**
 - Two transports to keep in sync: an MCP server change in response shape breaks the normalizer (it fails loudly on a missing `number` or head SHA rather than passing partial data).
 - In fallback mode, `PRE_EXISTING` is unavailable, so a failure already red on the base blocks the review until a human checks it.
+
+## Amendment — REST preflight (2026-10-05)
+
+In a Claude Code cloud session `gh auth status` fails (the `GH_TOKEN` is reported invalid) while `gh api repos/…` succeeds through the session proxy, and since ADR-011 the scripts fall back to REST when GraphQL is refused. The `gh auth status` preflight therefore sent `/pr-review` to the MCP fallback although the scripts would have worked, and lost the base CI input (`PRE_EXISTING`) for nothing. The preflight is now a REST call to the target repository (`gh api 'repos/{owner}/{repo}' --silent`): exit 0 → scripts, non-zero → MCP fallback as above.
