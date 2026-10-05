@@ -163,7 +163,7 @@ Next step and what to pass forward
 | `checkpoint.mjs` | Write / read / list pipeline checkpoints, namespaced by repo and issue | via `/issue-code-generation`, `/resume` |
 | `check-releases.mjs` | List repos with changes on main not yet in a release | via `/check-releases` |
 | `config.mjs` | `loadGitConfig()` / `loadPathsConfig()` — read `configs/git.yaml` / `configs/paths.yaml` | library |
-| `report-path.mjs` | Resolve the review report path (`AI_DEV_TOOLS_REPORTS_DIR`, else `configs/paths.yaml`) | CLI / via commands |
+| `report-path.mjs` | Resolve the review report path from PR JSON on stdin (`AI_DEV_TOOLS_REPORTS_DIR`, else `configs/paths.yaml`; refuses a non-ignored dir inside the working tree) | CLI / via commands |
 
 ---
 
