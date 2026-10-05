@@ -152,7 +152,7 @@ Next step and what to pass forward
 | `onboarding.mjs` | Full setup — copy workspace config, create skills junction, deploy commands and agents | CLI |
 | `sync-claude.mjs` | Incremental sync from `ai-dev-tools` → `~/.claude` (reports new/updated/extra) | CLI / via `/sync-ai-dev-tools` |
 | `gh-get-issue.mjs` | Fetch GitHub issue by number → JSON | CLI / via commands |
-| `gh-get-pr.mjs` | Fetch PR by number or source branch | CLI / via commands |
+| `gh-get-pr.mjs` | Fetch PR by number, `owner/repo#n`, URL or source branch | CLI / via commands |
 | `normalize-pr.mjs` | Map a PR fetched through GitHub MCP / REST to the `gh-get-pr.mjs` fields (ADR-010) | CLI / via commands |
 | `gh-get-pr-threads.mjs` | Fetch reviewer comment threads for a PR | CLI / via commands |
 | `gh-get-check-runs.mjs` | Fetch the CI check runs of a commit (or of the merge-base with a branch) → JSON, for `PRE_EXISTING` evidence | via `/pr-review`, `/ac-check`, `/issue-code-generation`, `/pr-fixer` |

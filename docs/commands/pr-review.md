@@ -10,8 +10,12 @@ Produces a consistent, structured review for any PR — covering correctness, ri
 
 ```
 /pr-review          # reviews the PR for the current branch
-/pr-review 42       # reviews PR #42 by number
+/pr-review 42       # reviews PR #42 of the current repository
+/pr-review owner/repo#42
+/pr-review https://github.com/owner/repo/pull/42
 ```
+
+With `owner/repo#42` or a URL, every script receives `--repo owner/repo`, so the PR can belong to another repository than the working directory. Checks still run only from a clone of that repository checked out at the PR head; otherwise every Evidence row is `NOT_RUN`.
 
 ## What it does
 
@@ -34,6 +38,8 @@ Report sections:
 - Non-blocking suggestions
 - Test coverage gaps
 - AC coverage checklist (if linked issue found)
+
+Each finding is tagged `[severity · origin]`: severity `High` / `Medium` / `Low`, origin `introduced` / `amplified` / `pre-existing`. Blocking: `introduced` findings of severity `High` or `Medium`, and `amplified` findings of severity `High`. Coverage gates declared in CI for a touched module are run and reported as an Evidence row.
 
 Checks only run when the working tree is exactly the PR head (HEAD = PR head SHA, clean `git status`). Run `gh pr checkout 42` on a clean tree first; otherwise the Evidence rows are `NOT_RUN` and the status is `NEEDS_REVIEW`. A check that fails identically on the base branch's CI is reported as `PRE_EXISTING` and does not block.
 
