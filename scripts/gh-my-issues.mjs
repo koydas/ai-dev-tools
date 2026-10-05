@@ -2,21 +2,33 @@
 // List GitHub issues assigned to the current authenticated user
 // Usage: node scripts/gh-my-issues.mjs [--repo <owner/repo>] [--state open|closed|all] [--limit <n>]
 // Node ≥ 20, requires `gh` CLI authenticated
+// Transport: `gh issue list` (GraphQL) first, REST when it fails (ADR-011).
 
 import { fileURLToPath } from 'node:url';
-import { ghApi, repoPath, toIssue } from './gh-rest.mjs';
+import { gh, restList, withGraphqlFallback, resolveRepo } from './gh-transport.mjs';
+import { mapRestIssue } from './gh-get-issue.mjs';
 
-// Pure: REST `issues` list → the shape of `gh issue list --json`, pull requests excluded (the
-// issues endpoint returns both), capped at `limit`.
-export function toIssueList(items, limit) {
-  return items.filter((i) => !i.pull_request).slice(0, limit).map((i) => toIssue(i));
+const FIELDS = 'number,title,state,labels,assignees,author,url,createdAt,updatedAt';
+
+// Pure: REST `issues` list → the `gh issue list --json FIELDS` shape. The issues endpoint also
+// returns pull requests: they are dropped. Capped at `limit`.
+export function mapRestIssueList(items, limit) {
+  return items.filter((i) => !i.pull_request).slice(0, limit).map((i) => {
+    const { body: _body, comments: _comments, ...issue } = mapRestIssue(i);
+    return issue;
+  });
 }
 
-// REST, not `gh issue list` (GraphQL) — see scripts/gh-rest.mjs.
-export function getMyIssues({ repo, state = 'open', limit = 30 } = {}) {
-  const login = ghApi('user').login;
+function getMyIssuesRest({ repo, state, limit }) {
+  const login = JSON.parse(gh(['api', 'user'])).login;
   const query = `assignee=${encodeURIComponent(login)}&state=${encodeURIComponent(state)}&per_page=100`;
-  return toIssueList(ghApi(`${repoPath(repo)}/issues?${query}`, { paginate: true }), limit);
+  return mapRestIssueList(restList(`repos/${resolveRepo(repo)}/issues?${query}`), limit);
+}
+
+export function getMyIssues({ repo, state = 'open', limit = 30 } = {}) {
+  const args = ['issue', 'list', '--assignee', '@me', '--state', state, '--limit', String(limit), '--json', FIELDS];
+  if (repo) args.push('--repo', repo);
+  return withGraphqlFallback(() => JSON.parse(gh(args)), () => getMyIssuesRest({ repo, state, limit }));
 }
 
 function formatIssues(issues) {
