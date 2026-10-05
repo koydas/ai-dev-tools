@@ -8,10 +8,20 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
+// Pure: REST endpoint of an issue/PR's comments. Without a repo, gh api resolves {owner}/{repo}
+// from the current directory. Throws on a non-numeric number or a malformed repo.
+export function commentsEndpoint(number, repo) {
+  const n = String(number ?? '').trim().replace(/^#/, '');
+  if (!/^\d+$/.test(n)) throw new Error(`not an issue or PR number: ${number}`);
+  if (repo && !/^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/.test(repo)) throw new Error(`not an owner/repo: ${repo}`);
+  return `repos/${repo || '{owner}/{repo}'}/issues/${n}/comments`;
+}
+
+// REST, not `gh issue comment`: that one goes through GraphQL, which some environments
+// (e.g. Claude Code cloud sessions) refuse. The body goes through stdin, never the command line.
 export function postComment(number, body, repo) {
-  const args = ['issue', 'comment', String(number), '--body', body];
-  if (repo) args.push('--repo', repo);
-  const result = spawnSync('gh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  const args = ['api', '--method', 'POST', commentsEndpoint(number, repo), '--input', '-', '--jq', '.html_url'];
+  const result = spawnSync('gh', args, { encoding: 'utf8', input: JSON.stringify({ body }), stdio: ['pipe', 'pipe', 'pipe'] });
 
   if (result.status !== 0) {
     throw new Error(result.stderr || 'gh command failed');
