@@ -22,12 +22,14 @@ With `owner/repo#42` or a URL, every script receives `--repo owner/repo`, so the
 1. Fetches the PR diff, description, and existing review threads. PR metadata comes from `gh pr view`, or from REST when GraphQL is refused (`source: rest` in the output). Threads come from GraphQL `reviewThreads`; when GraphQL is refused (a Claude Code cloud session's proxy refuses it), `gh-get-pr-threads.mjs` falls back to REST and takes resolution state from the session's `pulls/{n}/ccr/review_threads` route, or reports it `null` (unknown) when that route is absent. The output's `source` field (`graphql` / `rest+ccr` / `rest`) says which ([ADR-011](../adr/ADR-011-graphql-rest-fallback.md))
 2. Runs `pr-analyst`, which gathers context (conventions, ADRs, git history, callers of changed symbols), runs the repo's own checks (tests, lint, type-check, declared scans), and produces a structured report — see [ADR-009](../adr/ADR-009-tool-grounded-review.md)
 3. Writes the report to `<reports_dir>/<pr-number>-<slug>.md`, resolved by `scripts/report-path.mjs`: `AI_DEV_TOOLS_REPORTS_DIR`, else `reports_dir` in `configs/paths.yaml` (default `~/dev/pr-reviews`). The slug comes from the PR title read from the PR JSON, never from the command line. A `reports_dir` inside the current git working tree is refused unless git-ignored: a report there would make the tree dirty, and the next review would report every check `NOT_RUN`. In a cloud session, point `AI_DEV_TOOLS_REPORTS_DIR` at the scratchpad or another directory outside the clone
-4. Surfaces blocking issues immediately if any are found
+4. Posts the report as a comment on the PR, on every run and whatever the status ([ADR-012](../adr/ADR-012-pr-review-posts-report.md)), via `scripts/gh-post-comment.mjs` (REST API, body from stdin)
+5. Surfaces blocking issues immediately if any are found
 
 ## Output format
 
 ```
 ~/dev/pr-reviews/42-rate-limiting.md
+Comment posted: https://github.com/owner/repo/pull/42#issuecomment-…
 ```
 
 Report sections:
@@ -51,8 +53,9 @@ If the REST preflight (`gh api 'repos/{owner}/{repo}' --silent`) fails, the comm
 
 1. **Invocation** — you decide when to run it
 2. **Fork execution** — for a PR from a fork that is checked out, the command asks before pr-analyst executes anything from the branch (not asked when the PR is not checked out: nothing would run); declining yields `NOT_RUN` rows
-3. **NEEDS_REVIEW** — blocking issues and `FAIL` / `NOT_RUN` evidence are surfaced; no auto-comment posted
-4. **Comment posting** — you are asked for confirmation before any GitHub comment is posted
+3. **NEEDS_REVIEW** — blocking issues and `FAIL` / `NOT_RUN` evidence are surfaced and posted on the PR; nothing is fixed, approved or merged automatically
+
+The report comment is not a gate: invoking `/pr-review` is the consent to post it ([ADR-012](../adr/ADR-012-pr-review-posts-report.md)). It is a plain comment — never an approving or changes-requested review.
 
 ## See also
 
@@ -60,3 +63,4 @@ If the REST preflight (`gh api 'repos/{owner}/{repo}' --silent`) fails, the comm
 - [`/pr-fixer`](pr-fixer.md) — apply the blocking fixes from the report
 - [`scripts/gh-get-pr.mjs`](../../scripts/gh-get-pr.mjs)
 - [`scripts/gh-get-pr-threads.mjs`](../../scripts/gh-get-pr-threads.mjs)
+- [`scripts/gh-post-comment.mjs`](../../scripts/gh-post-comment.mjs)
