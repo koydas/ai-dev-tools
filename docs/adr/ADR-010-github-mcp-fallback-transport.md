@@ -14,8 +14,10 @@ ADR-007 rejected "inline tool calls in agents" because the model may hallucinate
 `gh` stays the primary transport. When it is unavailable, a command may fetch the same data with GitHub MCP tools, under three rules:
 
 1. **Preflight.** The command runs `gh auth status` first. Exit 0 → scripts as before. Non-zero → MCP fallback, announced once to the user.
-2. **Normalization stays in scripts.** The raw MCP response is saved to a file and passed to a pure normalization script (`scripts/normalize-pr.mjs` for PR metadata), which emits the `gh-get-pr.mjs` field names. The command never maps fields itself.
-3. **No silent degradation.** Data with no MCP equivalent is not approximated: it is passed as missing, and the agent applies its existing rule for missing input. For `/pr-review`, check runs of an arbitrary commit (the merge-base) are not exposed by the MCP server, so no base CI is passed and pr-analyst reports failures as `FAIL`, never `PRE_EXISTING`.
+2. **Normalization stays in scripts.** The raw MCP response is saved to a file and passed to a pure normalization script (`scripts/normalize-pr.mjs` for PR metadata), which emits the `gh-get-pr.mjs` field names. The file is written outside the working tree, so the tree stays exactly the PR head for the checks. The command never maps fields itself.
+
+   **Exception — review threads.** `/pr-review` passes the `get_review_comments` response to pr-analyst unnormalized, labelled as raw MCP output, until a `normalize-threads.mjs` can be written and tested against a recorded non-empty response. No field is mapped by the command in the meantime.
+3. **No silent degradation.** Data with no MCP equivalent is not approximated: it is passed as missing, and the agent applies its existing rule for missing input. For `/pr-review`, the MCP server's PR tools expose check runs for the PR head only, not for an arbitrary commit (the merge-base), so no base CI is passed and pr-analyst reports failures as `FAIL`, never `PRE_EXISTING`.
 
 Write operations (`gh-post-comment.mjs`) may use the MCP equivalent only after the same human confirmation the command already requires.
 
