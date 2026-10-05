@@ -5,7 +5,7 @@
 
 ## Context
 
-Some GitHub data is only complete over GraphQL: `gh pr view --json …` is GraphQL under the hood, and review-thread resolution (`isResolved`, `isOutdated`) exists only on the GraphQL `reviewThreads` connection. In a Claude Code cloud session, the egress proxy refuses GraphQL (`HTTP 403: GitHub GraphQL is not available from Claude Code sessions`) while REST works, and `gh repo view` fails the same way. `scripts/gh-get-pr-threads.mjs` therefore returned nothing in those sessions, so `/pr-review` had no threads, reviews or PR comments.
+Some GitHub data is only complete over GraphQL: `gh pr view --json …` is GraphQL under the hood, and review-thread resolution (`isResolved`, `isOutdated`) exists only on the GraphQL `reviewThreads` connection. In a Claude Code cloud session, the egress proxy refuses GraphQL (`HTTP 403: GitHub GraphQL is not available from Claude Code sessions`) while REST works, and `gh repo view` fails the same way. `scripts/gh-get-pr.mjs` and `scripts/gh-get-pr-threads.mjs` therefore failed in those sessions: `/pr-review` had no PR metadata, no threads, no reviews and no PR comments.
 
 The same proxy exposes `GET /repos/{owner}/{repo}/pulls/{n}/ccr/review_threads`, which returns one entry per thread: `{ resolved, outdated, path, line, comment_ids }`. That route exists only behind the proxy; elsewhere it fails.
 
@@ -22,14 +22,21 @@ A script that reads GitHub through GraphQL (directly or via a `gh` subcommand th
 5. **Provenance in the output.** The output carries `source` (`graphql` | `rest+ccr` | `rest`), so the consumer and the human can see how complete the data is.
 6. **Repository detection** does not depend on GraphQL: when `gh repo view` fails, the `origin` remote URL is parsed instead.
 
-`scripts/gh-get-pr-threads.mjs` is the reference implementation: `buildThreads` (GraphQL), `buildThreadsFromRest` and `mapRestPrActivity` (REST), and `repoFromRemoteUrl`.
+**Implementation.** `scripts/gh-transport.mjs` holds the shared pieces: `gh`, `restList` (paginated), `withGraphqlFallback(graphql, rest)`, `resolveRepo` and `repoFromRemoteUrl`, and `mapRestPrActivity` (REST reviews, requested reviewers and issue comments → `gh pr view` shapes). A script supplies only its own two fetch functions and its pure mapper:
+
+| Script | GraphQL path | REST path | Pure mapper |
+|---|---|---|---|
+| `gh-get-pr.mjs` | `gh pr view --json <fields>` | `pulls/{n}` (or `pulls?head=<owner>:<branch>`), reviews, issue comments | `mapRestPr` |
+| `gh-get-pr-threads.mjs` | `gh pr view` + `reviewThreads` query | reviews, requested reviewers, issue comments, review comments, `ccr/review_threads` | `buildThreadsFromRest` |
+
+`gh pr diff` already uses REST and needs no fallback.
 
 This pattern applies when `gh` is authenticated but GraphQL is refused. When `gh` itself is unusable, commands use the GitHub MCP fallback of ADR-010.
 
 ## Consequences
 
 **Positive**
-- `/pr-review` gets threads, reviews and PR comments in cloud sessions, with resolution state when the proxy provides it.
+- `/pr-review` gets PR metadata, threads, reviews and PR comments in cloud sessions, with resolution state when the proxy provides it.
 - Missing data is visible: a `null` field and a `source` other than `graphql`. It is never a value that only looks correct.
 - Mapping logic stays pure and tested, per ADR-007.
 

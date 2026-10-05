@@ -5,10 +5,10 @@
 // Transport: GraphQL first. When it fails (e.g. a Claude Code cloud session, whose proxy refuses
 // GraphQL), everything is fetched over REST; resolution state then comes from the session's
 // `pulls/{n}/ccr/review_threads` route when it exists, else it is reported unknown (`null`).
-// The output's `source` says which: `graphql` | `rest+ccr` | `rest`. Pattern: ADR-011.
+// The output's `source` says which: `graphql` | `rest+ccr` | `rest`. Pattern: ADR-011 (scripts/gh-transport.mjs).
 
-import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { gh, restList, withGraphqlFallback, resolveRepo, mapRestPrActivity } from './gh-transport.mjs';
 
 // The REST endpoint `pulls/{n}/comments` carries no resolution state; only the GraphQL
 // `reviewThreads` connection exposes `isResolved` / `isOutdated`. Replies beyond the first 100
@@ -104,27 +104,6 @@ export function buildThreadsFromRest(comments, ccrThreads = null) {
   return threads;
 }
 
-// Pure: REST reviews / requested_reviewers / issue comments → the `gh pr view --json` field shapes.
-export function mapRestPrActivity({ reviews = [], requested = {}, issueComments = [] } = {}) {
-  return {
-    reviews: reviews.map((r) => ({
-      id: r.node_id, author: { login: r.user?.login ?? null }, body: r.body,
-      state: r.state, submittedAt: r.submitted_at, commit: { oid: r.commit_id },
-    })),
-    reviewRequests: [
-      ...(requested.users ?? []).map((u) => ({ __typename: 'User', login: u.login })),
-      ...(requested.teams ?? []).map((t) => ({ __typename: 'Team', name: t.name, slug: t.slug })),
-    ],
-    prComments: issueComments.map((c) => ({
-      id: c.node_id, author: { login: c.user?.login ?? null }, body: c.body,
-      createdAt: c.created_at, url: c.html_url,
-    })),
-  };
-}
-
-const gh = (args) => execFileSync('gh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
-const restList = (endpoint) => JSON.parse(gh(['api', '--paginate', '--slurp', endpoint])).flat();
-
 function getPrThreadsGraphql(prNumber, ownerRepo) {
   const data = JSON.parse(gh(['pr', 'view', String(prNumber), '--json', 'reviews,reviewRequests,comments', '--repo', ownerRepo]));
   const [owner, name] = ownerRepo.split('/');
@@ -159,32 +138,7 @@ function getPrThreadsRest(prNumber, ownerRepo) {
 
 export function getPrThreads(prNumber, repo) {
   const ownerRepo = resolveRepo(repo);
-  try {
-    return getPrThreadsGraphql(prNumber, ownerRepo);
-  } catch (err) {
-    const reason = String(err.stderr || err.message).split('\n')[0].slice(0, 120);
-    console.error(`GraphQL unavailable (${reason}) — falling back to REST`);
-    return getPrThreadsRest(prNumber, ownerRepo);
-  }
-}
-
-// Pure: owner/repo from a GitHub remote URL (https or ssh), null otherwise.
-export function repoFromRemoteUrl(url) {
-  const m = String(url ?? '').trim().match(/github\.com[/:]([A-Za-z0-9-]+\/[A-Za-z0-9._-]+?)(?:\.git)?\/?$/);
-  return m ? m[1] : null;
-}
-
-function resolveRepo(repo) {
-  if (repo) return repo;
-  try {
-    return gh(['repo', 'view', '--json', 'nameWithOwner', '-q', '.nameWithOwner']).trim();
-  } catch { /* gh repo view uses GraphQL: fall back to the origin remote */ }
-  let fromRemote = null;
-  try {
-    fromRemote = repoFromRemoteUrl(execFileSync('git', ['remote', 'get-url', 'origin'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }));
-  } catch { /* not a git clone */ }
-  if (!fromRemote) throw new Error('Could not determine repository. Pass --repo <owner/repo>.');
-  return fromRemote;
+  return withGraphqlFallback(() => getPrThreadsGraphql(prNumber, ownerRepo), () => getPrThreadsRest(prNumber, ownerRepo));
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

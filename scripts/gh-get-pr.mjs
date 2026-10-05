@@ -4,9 +4,12 @@
 //   <pr-ref>: 42 | #42 | owner/repo#42 | https://github.com/owner/repo/pull/42[/...]
 // Output adds `repository` (owner/repo), so commands can pass --repo to the other scripts.
 // Node ≥ 20, requires `gh` CLI authenticated
+// Transport: `gh pr view` (GraphQL) first, REST when it fails (ADR-011); the output's `source`
+// says which (`graphql` | `rest`).
 
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { gh, restList, withGraphqlFallback, resolveRepo, mapRestPrActivity } from './gh-transport.mjs';
 
 const USAGE = 'Usage: node scripts/gh-get-pr.mjs [<pr-ref> | --branch <branch>] [--repo <owner/repo>]';
 const REPO = '[A-Za-z0-9-]+/[A-Za-z0-9._-]+';
@@ -34,11 +37,71 @@ export function repoFromPrUrl(url) {
 
 const FIELDS = 'number,title,body,state,author,headRefName,headRefOid,baseRefName,isCrossRepository,labels,assignees,reviewRequests,reviews,comments,url,createdAt,updatedAt,mergedAt,isDraft';
 
+// Pure: REST `pulls/{n}` object + its reviews and issue comments → the `gh pr view --json FIELDS` shape.
+// A deleted head repository (fork) counts as cross-repository, so the fork gate still asks.
+export function mapRestPr(pr, { reviews = [], issueComments = [] } = {}) {
+  if (!pr || typeof pr !== 'object' || !Number.isInteger(pr.number)) {
+    throw new Error('not a pull request object: missing integer "number"');
+  }
+  const headRepo = pr.head?.repo?.full_name ?? null;
+  const baseRepo = pr.base?.repo?.full_name ?? null;
+  const merged = pr.merged === true || Boolean(pr.merged_at);
+  const activity = mapRestPrActivity({
+    reviews,
+    requested: { users: pr.requested_reviewers ?? [], teams: pr.requested_teams ?? [] },
+    issueComments,
+  });
+  return {
+    number: pr.number,
+    title: pr.title ?? '',
+    body: pr.body ?? '',
+    state: merged ? 'MERGED' : String(pr.state ?? '').toUpperCase() || null,
+    author: { login: pr.user?.login ?? null },
+    headRefName: pr.head?.ref ?? null,
+    headRefOid: pr.head?.sha ?? null,
+    baseRefName: pr.base?.ref ?? null,
+    isCrossRepository: !headRepo || !baseRepo || headRepo.toLowerCase() !== baseRepo.toLowerCase(),
+    labels: (pr.labels ?? []).map((l) => ({ name: typeof l === 'string' ? l : l?.name ?? null })),
+    assignees: (pr.assignees ?? []).map((a) => ({ login: a?.login ?? null })),
+    reviewRequests: activity.reviewRequests,
+    reviews: activity.reviews,
+    comments: activity.prComments,
+    url: pr.html_url ?? null,
+    createdAt: pr.created_at ?? null,
+    updatedAt: pr.updated_at ?? null,
+    mergedAt: pr.merged_at ?? null,
+    isDraft: pr.draft === true,
+  };
+}
+
+function getPrRest(identifier, ownerRepo) {
+  const base = `repos/${ownerRepo}`;
+  let pr;
+  if (/^\d+$/.test(String(identifier))) {
+    pr = JSON.parse(gh(['api', '--paginate', `${base}/pulls/${identifier}`]));
+  } else {
+    // Same lookup as `gh pr view <branch>`: the open PR whose head is that branch of this repository.
+    const owner = ownerRepo.split('/')[0];
+    [pr] = restList(`${base}/pulls?state=open&head=${encodeURIComponent(`${owner}:${identifier}`)}`);
+    if (!pr) throw new Error(`no open pull requests found for branch "${identifier}"`);
+  }
+  return {
+    source: 'rest',
+    ...mapRestPr(pr, {
+      reviews: restList(`${base}/pulls/${pr.number}/reviews`),
+      issueComments: restList(`${base}/issues/${pr.number}/comments`),
+    }),
+  };
+}
+
 export function getPr(identifier, repo) {
   // PR number or branch name — gh pr view accepts both positionally
   const args = ['pr', 'view', '--json', FIELDS, String(identifier)];
   if (repo) args.push('--repo', repo);
-  return JSON.parse(execFileSync('gh', args, { encoding: 'utf8' }));
+  return withGraphqlFallback(
+    () => ({ source: 'graphql', ...JSON.parse(gh(args)) }),
+    () => getPrRest(identifier, resolveRepo(repo)),
+  );
 }
 
 export function getPrDiff(prNumber, repo) {

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildThreads, buildThreadsFromRest, mapRestPrActivity, repoFromRemoteUrl } from '../scripts/gh-get-pr-threads.mjs';
+import { buildThreads, buildThreadsFromRest } from '../scripts/gh-get-pr-threads.mjs';
 
 const comment = (id, login, body) => ({ databaseId: id, author: { login }, body, createdAt: `2026-01-0${id}T00:00:00Z` });
 const page = (nodes) => ({ data: { repository: { pullRequest: { reviewThreads: { nodes, pageInfo: { hasNextPage: false, endCursor: null } } } } } });
@@ -95,26 +95,4 @@ test('buildThreadsFromRest: deleted comments and authors, non-boolean resolved, 
   assert.deepEqual([threads[0].id, threads[0].author, threads[0].resolved, threads[0].line], [12, null, null, 5]);
   assert.throws(() => buildThreadsFromRest({}), /array of review comments/);
   assert.deepEqual(buildThreadsFromRest([], CCR), []);
-});
-
-test('mapRestPrActivity: REST reviews, requested reviewers and issue comments → gh pr view shapes', () => {
-  const out = mapRestPrActivity({
-    reviews: [{ node_id: 'PRR_1', user: { login: 'alice' }, body: 'lgtm', state: 'APPROVED', submitted_at: 't1', commit_id: 'abc' }],
-    requested: { users: [{ login: 'bob' }], teams: [{ name: 'Core', slug: 'core' }] },
-    issueComments: [{ node_id: 'IC_1', user: null, body: 'hi', created_at: 't2', html_url: 'u' }],
-  });
-  assert.deepEqual(out, {
-    reviews: [{ id: 'PRR_1', author: { login: 'alice' }, body: 'lgtm', state: 'APPROVED', submittedAt: 't1', commit: { oid: 'abc' } }],
-    reviewRequests: [{ __typename: 'User', login: 'bob' }, { __typename: 'Team', name: 'Core', slug: 'core' }],
-    prComments: [{ id: 'IC_1', author: { login: null }, body: 'hi', createdAt: 't2', url: 'u' }],
-  });
-  assert.deepEqual(mapRestPrActivity(), { reviews: [], reviewRequests: [], prComments: [] });
-});
-
-test('repoFromRemoteUrl: https and ssh GitHub remotes, null otherwise', () => {
-  assert.equal(repoFromRemoteUrl('https://github.com/koydas/ai-dev-tools\n'), 'koydas/ai-dev-tools');
-  assert.equal(repoFromRemoteUrl('https://github.com/koydas/ai-dev-tools.git'), 'koydas/ai-dev-tools');
-  assert.equal(repoFromRemoteUrl('git@github.com:koydas/my.repo.git'), 'koydas/my.repo');
-  assert.equal(repoFromRemoteUrl('https://gitlab.com/o/r.git'), null);
-  assert.equal(repoFromRemoteUrl(undefined), null);
 });
