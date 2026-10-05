@@ -105,7 +105,7 @@ Next step and what to pass forward
 |---|---|---|
 | `/issue-code-generation [id] [--strict]` | `issue-router` → `ticket-analyst` → `code-builder-*` → (`code-challenger`) → `code-reviewer` | Full issue → code → AC validation pipeline. `--strict` activates critic-pair (code-challenger) before review |
 | `/resume [id] --repo <owner/repo> [--strict]` | — | Resume an interrupted `/issue-code-generation` run from its first missing checkpoint |
-| `/pr-review` | `pr-analyst` | Review PR, write structured report to the reports directory (default `~/dev/pr-reviews/`) |
+| `/pr-review` | `pr-analyst` | Review PR, write structured report to the reports directory (default `~/dev/pr-reviews/`) and post it on the PR |
 | `/pr-fixer` | `code-builder` | Apply blocking fixes from an existing review file |
 | `/ac-check [id]` | `code-reviewer` | Validate code coverage against issue acceptance criteria |
 | `/bug-seeker [id]` | — | Interactive investigation — issue, logs, code → diagnostic report |
@@ -157,7 +157,7 @@ Next step and what to pass forward
 | `gh-transport.mjs` | Shared GitHub transport: GraphQL → REST fallback, paginated REST lists, repo detection, REST → `gh pr view` mappers (ADR-011) | library |
 | `normalize-pr.mjs` | Map a PR fetched through GitHub MCP / REST to the `gh-get-pr.mjs` fields — delegates to `gh-get-pr.mjs` `mapRestPr` (ADR-010, ADR-011) | CLI / via commands |
 | `gh-get-check-runs.mjs` | Fetch the CI check runs of a commit (or of the merge-base with a branch) → JSON, for `PRE_EXISTING` evidence | via `/pr-review`, `/ac-check`, `/issue-code-generation`, `/pr-fixer` |
-| `gh-post-comment.mjs` | Post a comment to a GitHub issue | CLI / via commands |
+| `gh-post-comment.mjs` | Post a comment to a GitHub issue or PR (REST API, body from argument or stdin) | CLI / via `/pr-review`, `/issue-notes` |
 | `gh-my-issues.mjs` | List issues assigned to current user | CLI |
 | `token-audit.mjs` | Aggregate token usage from Claude Code JSONL session files | via `/token-audit` |
 | `update-repos.mjs` | Pull latest on all configured repos | CLI |
