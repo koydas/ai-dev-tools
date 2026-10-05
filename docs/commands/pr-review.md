@@ -32,10 +32,10 @@ Report sections:
 - Risk assessment (Low / Medium / High)
 - Blocking issues (must fix before merge)
 - Non-blocking suggestions
-
-Each finding is tagged `[severity · origin]`: severity `High` / `Medium` / `Low`, origin `introduced` / `amplified` / `pre-existing`. Only `introduced` findings, plus `amplified` findings of severity `High`, can block. Coverage gates declared in CI for a touched module are run and reported as an Evidence row.
 - Test coverage gaps
 - AC coverage checklist (if linked issue found)
+
+Each finding is tagged `[severity · origin]`: severity `High` / `Medium` / `Low`, origin `introduced` / `amplified` / `pre-existing`. Blocking: `introduced` findings of severity `High` or `Medium`, and `amplified` findings of severity `High`. Coverage gates declared in CI for a touched module are run and reported as an Evidence row.
 
 Checks only run when the working tree is exactly the PR head (HEAD = PR head SHA, clean `git status`). Run `gh pr checkout 42` on a clean tree first; otherwise the Evidence rows are `NOT_RUN` and the status is `NEEDS_REVIEW`. A check that fails identically on the base branch's CI is reported as `PRE_EXISTING` and does not block.
 
