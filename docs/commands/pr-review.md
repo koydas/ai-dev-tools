@@ -10,8 +10,12 @@ Produces a consistent, structured review for any PR — covering correctness, ri
 
 ```
 /pr-review          # reviews the PR for the current branch
-/pr-review 42       # reviews PR #42 by number
+/pr-review 42       # reviews PR #42 of the current repository
+/pr-review owner/repo#42
+/pr-review https://github.com/owner/repo/pull/42
 ```
+
+With `owner/repo#42` or a URL, every script receives `--repo owner/repo`, so the PR can belong to another repository than the working directory. Checks still run only from a clone of that repository checked out at the PR head; otherwise every Evidence row is `NOT_RUN`.
 
 ## What it does
 
