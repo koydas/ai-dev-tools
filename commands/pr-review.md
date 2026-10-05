@@ -4,6 +4,12 @@ Fetch the current PR, run a structured review, and write the report to `~/dev/pr
 
 ## Steps
 
+0. **Transport preflight** — run `gh auth status`. If it fails, tell the user once that GitHub is reached through the GitHub MCP server for this run, then replace the `gh` scripts below as follows ([ADR-010](../docs/adr/ADR-010-github-mcp-fallback-transport.md)):
+   - Step 2: fetch the PR with the MCP `pull_request_read` tool (method `get`), save the response to a file, and run `node scripts/normalize-pr.mjs <file>` — its output replaces `gh-get-pr.mjs`
+   - Step 3: MCP `pull_request_read` method `get_diff`
+   - Step 4: MCP `pull_request_read` methods `get_review_comments` and `get_comments`, passed to pr-analyst as returned
+   - Step 6: skipped — the MCP server exposes no check runs for an arbitrary commit, so no base CI input is passed
+   - Step 11: post the comment with the MCP equivalent, after the same confirmation
 1. Determine the PR to review:
    - If an argument is provided (`$ARGUMENTS`), use it as the PR number
    - Otherwise, use the current branch: `node scripts/gh-get-pr.mjs` (auto-detects head branch)
