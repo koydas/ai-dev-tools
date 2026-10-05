@@ -1,4 +1,4 @@
-# ADR-010 — /pr-review Posts Its Report on the PR
+# ADR-011 — /pr-review Posts Its Report on the PR
 
 **Status:** Accepted  
 **Date:** 2026-10-05
@@ -16,6 +16,7 @@
 - `/pr-review` posts the full report as a PR comment **on every run, whatever the status** (`DONE` or `NEEDS_REVIEW`), after writing the local file.
 - Invoking `/pr-review` is the consent to post: the invocation gate of [ADR-001](ADR-001-human-as-gate.md) covers it, no extra confirmation is asked.
 - The comment is a plain issue comment, never a GitHub review: it does not approve or request changes. Merge and fix decisions stay with the human (merge and review gates unchanged).
+- In the MCP fallback ([ADR-010](ADR-010-github-mcp-fallback-transport.md)), the report is posted with `add_issue_comment` on every run too: this supersedes ADR-010's "only after the same human confirmation" for `/pr-review`.
 - `gh-post-comment.mjs` posts through the REST API (`gh api POST repos/<owner>/<repo>/issues/<n>/comments`), the body passed as JSON on stdin — never on the command line.
 
 ## Consequences

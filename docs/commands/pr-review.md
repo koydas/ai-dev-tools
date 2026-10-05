@@ -22,7 +22,7 @@ With `owner/repo#42` or a URL, every script receives `--repo owner/repo`, so the
 1. Fetches the PR diff, description, and existing review threads
 2. Runs `pr-analyst`, which gathers context (conventions, ADRs, git history, callers of changed symbols), runs the repo's own checks (tests, lint, type-check, declared scans), and produces a structured report — see [ADR-009](../adr/ADR-009-tool-grounded-review.md)
 3. Writes the report to `<reports_dir>/<pr-number>-<slug>.md`, resolved by `scripts/report-path.mjs`: `AI_DEV_TOOLS_REPORTS_DIR`, else `reports_dir` in `configs/paths.yaml` (default `~/dev/pr-reviews`). The slug comes from the PR title read from the PR JSON, never from the command line. A `reports_dir` inside the current git working tree is refused unless git-ignored: a report there would make the tree dirty, and the next review would report every check `NOT_RUN`. In a cloud session, point `AI_DEV_TOOLS_REPORTS_DIR` at the scratchpad or another directory outside the clone
-4. Posts the report as a comment on the PR, on every run and whatever the status ([ADR-010](../adr/ADR-010-pr-review-posts-report.md)), via `scripts/gh-post-comment.mjs` (REST API, body from stdin)
+4. Posts the report as a comment on the PR, on every run and whatever the status ([ADR-011](../adr/ADR-011-pr-review-posts-report.md)), via `scripts/gh-post-comment.mjs` (REST API, body from stdin)
 5. Surfaces blocking issues immediately if any are found
 
 ## Output format
@@ -45,13 +45,17 @@ Each finding is tagged `[severity · origin]`: severity `High` / `Medium` / `Low
 
 Checks only run when the working tree is exactly the PR head (HEAD = PR head SHA, clean `git status`). Run `gh pr checkout 42` on a clean tree first; otherwise the Evidence rows are `NOT_RUN` and the status is `NEEDS_REVIEW`. A check that fails identically on the base branch's CI is reported as `PRE_EXISTING` and does not block.
 
+## Without an authenticated `gh`
+
+If `gh auth status` fails (e.g. a Claude Code cloud session), the command fetches the PR through the GitHub MCP server and normalizes it with `scripts/normalize-pr.mjs`, so pr-analyst receives the same fields ([ADR-010](../adr/ADR-010-github-mcp-fallback-transport.md)). Base CI results are not available in that mode: a check that fails is reported `FAIL`, never `PRE_EXISTING`.
+
 ## Human gates
 
 1. **Invocation** — you decide when to run it
 2. **Fork execution** — for a PR from a fork that is checked out, the command asks before pr-analyst executes anything from the branch (not asked when the PR is not checked out: nothing would run); declining yields `NOT_RUN` rows
 3. **NEEDS_REVIEW** — blocking issues and `FAIL` / `NOT_RUN` evidence are surfaced and posted on the PR; nothing is fixed, approved or merged automatically
 
-The report comment is not a gate: invoking `/pr-review` is the consent to post it ([ADR-010](../adr/ADR-010-pr-review-posts-report.md)). It is a plain comment — never an approving or changes-requested review.
+The report comment is not a gate: invoking `/pr-review` is the consent to post it ([ADR-011](../adr/ADR-011-pr-review-posts-report.md)). It is a plain comment — never an approving or changes-requested review.
 
 ## See also
 
