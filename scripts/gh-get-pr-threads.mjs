@@ -6,42 +6,78 @@
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
+// The REST endpoint `pulls/{n}/comments` carries no resolution state; only the GraphQL
+// `reviewThreads` connection exposes `isResolved` / `isOutdated`. Replies beyond the first 100
+// of a single thread are not fetched.
+const THREADS_QUERY = `
+query($owner: String!, $name: String!, $number: Int!, $endCursor: String) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      reviewThreads(first: 100, after: $endCursor) {
+        nodes {
+          id
+          isResolved
+          isOutdated
+          path
+          line
+          originalLine
+          comments(first: 100) {
+            nodes { databaseId author { login } body createdAt }
+          }
+        }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  }
+}`;
+
+// Pure: `gh api graphql --paginate --slurp` output (an array of pages) → threads.
+export function buildThreads(pages) {
+  if (!Array.isArray(pages)) throw new Error('expected an array of GraphQL pages');
+  return pages.flatMap((page, i) => {
+    const connection = page?.data?.repository?.pullRequest?.reviewThreads;
+    if (!connection || !Array.isArray(connection.nodes)) {
+      throw new Error(`GraphQL page ${i + 1} has no reviewThreads`);
+    }
+    return connection.nodes
+      .filter((thread) => thread?.comments?.nodes?.length)
+      .map((thread) => {
+        const [root, ...replies] = thread.comments.nodes;
+        return {
+          id: root.databaseId,
+          threadId: thread.id,
+          path: thread.path,
+          line: thread.line ?? thread.originalLine,
+          author: root.author?.login ?? null,
+          body: root.body,
+          createdAt: root.createdAt,
+          resolved: thread.isResolved === true,
+          outdated: thread.isOutdated === true,
+          replies: replies.map((r) => ({ author: r.author?.login ?? null, body: r.body, createdAt: r.createdAt })),
+        };
+      });
+  });
+}
+
 export function getPrThreads(prNumber, repo) {
   const prArgs = ['pr', 'view', String(prNumber), '--json', 'reviews,reviewRequests,comments'];
   if (repo) prArgs.push('--repo', repo);
   const data = JSON.parse(execFileSync('gh', prArgs, { encoding: 'utf8' }));
 
-  // Group inline review comments by thread using the GitHub API
-  // gh pr view only gives top-level comments; use the REST API for review threads
-  const ownerRepo = resolveRepo(repo);
-  // --slurp merges all pages into an array of page-arrays; flatten to get all comments
+  const [owner, name] = resolveRepo(repo).split('/');
   const threadsRaw = execFileSync(
     'gh',
-    ['api', '--paginate', '--slurp', `repos/${ownerRepo}/pulls/${prNumber}/comments`],
+    ['api', 'graphql', '--paginate', '--slurp',
+      '-f', `query=${THREADS_QUERY}`,
+      '-F', `owner=${owner}`, '-F', `name=${name}`, '-F', `number=${prNumber}`],
     { encoding: 'utf8' }
   );
-  const inlineComments = JSON.parse(threadsRaw).flat();
-
-  // Group by in_reply_to_id to reconstruct threads
-  const roots = inlineComments.filter(c => !c.in_reply_to_id);
-  const threads = roots.map(root => ({
-    id: root.id,
-    path: root.path,
-    line: root.line ?? root.original_line,
-    author: root.user.login,
-    body: root.body,
-    createdAt: root.created_at,
-    resolved: root.resolved ?? false,
-    replies: inlineComments
-      .filter(c => c.in_reply_to_id === root.id)
-      .map(r => ({ author: r.user.login, body: r.body, createdAt: r.created_at })),
-  }));
 
   return {
     reviews: data.reviews,
     reviewRequests: data.reviewRequests,
     prComments: data.comments,
-    threads,
+    threads: buildThreads(JSON.parse(threadsRaw)),
   };
 }
 
