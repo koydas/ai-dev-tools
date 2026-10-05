@@ -1,4 +1,4 @@
-# ADR-011 — /pr-review Posts Its Report on the PR
+# ADR-012 — /pr-review Posts Its Report on the PR
 
 **Status:** Accepted  
 **Date:** 2026-10-05
