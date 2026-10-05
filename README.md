@@ -153,7 +153,7 @@ Next step and what to pass forward
 | `sync-claude.mjs` | Incremental sync from `ai-dev-tools` → `~/.claude` (reports new/updated/extra) | CLI / via `/sync-ai-dev-tools` |
 | `gh-get-issue.mjs` | Fetch GitHub issue by number → JSON | CLI / via commands |
 | `gh-get-pr.mjs` | Fetch PR by number, `owner/repo#n`, URL or source branch | CLI / via commands |
-| `gh-get-pr-threads.mjs` | Fetch reviewer comment threads for a PR | CLI / via commands |
+| `gh-get-pr-threads.mjs` | Fetch reviewer comment threads for a PR (GraphQL, REST fallback: `resolved` is `null` when unknown) | CLI / via commands |
 | `gh-get-check-runs.mjs` | Fetch the CI check runs of a commit (or of the merge-base with a branch) → JSON, for `PRE_EXISTING` evidence | via `/pr-review`, `/ac-check`, `/issue-code-generation`, `/pr-fixer` |
 | `gh-post-comment.mjs` | Post a comment to a GitHub issue | CLI / via commands |
 | `gh-my-issues.mjs` | List issues assigned to current user | CLI |
@@ -162,6 +162,7 @@ Next step and what to pass forward
 | `list-files.mjs` | Recursive numbered file listing | CLI |
 | `checkpoint.mjs` | Write / read / list pipeline checkpoints, namespaced by repo and issue | via `/issue-code-generation`, `/resume` |
 | `check-releases.mjs` | List repos with changes on main not yet in a release | via `/check-releases` |
+| `gh-rest.mjs` | REST helpers + mappers to the `gh … --json` shapes, shared by the `gh-*` scripts (no GraphQL) | library |
 | `config.mjs` | `loadGitConfig()` / `loadPathsConfig()` — read `configs/git.yaml` / `configs/paths.yaml` | library |
 | `report-path.mjs` | Resolve the review report path from PR JSON on stdin (`AI_DEV_TOOLS_REPORTS_DIR`, else `configs/paths.yaml`; refuses a non-ignored dir inside the working tree) | CLI / via commands |
 

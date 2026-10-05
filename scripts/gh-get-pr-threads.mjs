@@ -5,10 +5,12 @@
 
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { ghApi, repoPath, toAuthor, toPr } from './gh-rest.mjs';
 
 // The REST endpoint `pulls/{n}/comments` carries no resolution state; only the GraphQL
 // `reviewThreads` connection exposes `isResolved` / `isOutdated`. Replies beyond the first 100
-// of a single thread are not fetched.
+// of a single thread are not fetched. Where GraphQL is refused (e.g. Claude Code cloud sessions),
+// threads are rebuilt from REST review comments — see buildRestThreads.
 const THREADS_QUERY = `
 query($owner: String!, $name: String!, $number: Int!, $endCursor: String) {
   repository(owner: $owner, name: $name) {
@@ -59,32 +61,97 @@ export function buildThreads(pages) {
   });
 }
 
-export function getPrThreads(prNumber, repo) {
-  const prArgs = ['pr', 'view', String(prNumber), '--json', 'reviews,reviewRequests,comments'];
-  if (repo) prArgs.push('--repo', repo);
-  const data = JSON.parse(execFileSync('gh', prArgs, { encoding: 'utf8' }));
+// Pure: REST review comments (`pulls/{n}/comments`) → threads, same shape as buildThreads.
+// `states` maps a root comment id → { resolved, outdated } when a resolution source is available;
+// without one, `resolved` is null (unknown — treat as unresolved) and `outdated` comes from REST
+// (`line` is null once the commented line no longer exists). threadId is null: no GraphQL node id.
+export function buildRestThreads(comments, states = null) {
+  if (!Array.isArray(comments)) throw new Error('expected an array of review comments');
+  const replies = new Map();
+  for (const c of comments) {
+    if (c.in_reply_to_id == null) continue;
+    if (!replies.has(c.in_reply_to_id)) replies.set(c.in_reply_to_id, []);
+    replies.get(c.in_reply_to_id).push(c);
+  }
+  return comments
+    .filter((c) => c.in_reply_to_id == null)
+    .map((root) => {
+      const state = states?.get(root.id);
+      return {
+        id: root.id,
+        threadId: null,
+        path: root.path,
+        line: root.line ?? root.original_line ?? null,
+        author: toAuthor(root.user)?.login ?? null,
+        body: root.body,
+        createdAt: root.created_at,
+        resolved: state ? state.resolved === true : null,
+        outdated: state ? state.outdated === true : root.line == null,
+        replies: (replies.get(root.id) ?? [])
+          .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))
+          .map((r) => ({ author: toAuthor(r.user)?.login ?? null, body: r.body, createdAt: r.created_at })),
+      };
+    });
+}
 
+// Pure: Claude Code cloud sessions' `pulls/{n}/ccr/review_threads` → Map(root comment id → state).
+export function buildThreadStates(ccrThreads) {
+  if (!Array.isArray(ccrThreads)) throw new Error('expected an array of review threads');
+  return new Map(ccrThreads.filter((t) => t?.comment_ids?.length).map((t) => [t.comment_ids[0], { resolved: t.resolved, outdated: t.outdated }]));
+}
+
+function getGraphqlThreads(prNumber, repo) {
   const [owner, name] = resolveRepo(repo).split('/');
   const threadsRaw = execFileSync(
     'gh',
     ['api', 'graphql', '--paginate', '--slurp',
       '-f', `query=${THREADS_QUERY}`,
       '-F', `owner=${owner}`, '-F', `name=${name}`, '-F', `number=${prNumber}`],
-    { encoding: 'utf8' }
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }
   );
+  return buildThreads(JSON.parse(threadsRaw));
+}
+
+function getRestThreads(prNumber, repo) {
+  const base = `${repoPath(repo)}/pulls/${prNumber}`;
+  const comments = ghApi(`${base}/comments?per_page=100`, { paginate: true });
+  let states = null;
+  try {
+    states = buildThreadStates(ghApi(`${base}/ccr/review_threads`));
+  } catch {
+    // No resolution source outside Claude Code cloud sessions: resolved stays null.
+  }
+  return buildRestThreads(comments, states);
+}
+
+// Reviews, review requests and PR comments over REST (gh pr view is GraphQL); threads over
+// GraphQL when available, else rebuilt from REST.
+export function getPrThreads(prNumber, repo) {
+  const base = repoPath(repo);
+  const { reviews, reviewRequests, comments: prComments } = toPr(ghApi(`${base}/pulls/${prNumber}`), {
+    reviews: ghApi(`${base}/pulls/${prNumber}/reviews?per_page=100`, { paginate: true }),
+    comments: ghApi(`${base}/issues/${prNumber}/comments?per_page=100`, { paginate: true }),
+  });
+
+  let threads;
+  try {
+    threads = getGraphqlThreads(prNumber, repo);
+  } catch {
+    threads = getRestThreads(prNumber, repo);
+  }
 
   return {
-    reviews: data.reviews,
-    reviewRequests: data.reviewRequests,
-    prComments: data.comments,
-    threads: buildThreads(JSON.parse(threadsRaw)),
+    reviews,
+    reviewRequests,
+    prComments,
+    threads,
   };
 }
 
 function resolveRepo(repo) {
   if (repo) return repo;
   try {
-    return execFileSync('gh', ['repo', 'view', '--json', 'nameWithOwner', '-q', '.nameWithOwner'], { encoding: 'utf8' }).trim();
+    return ghApi(repoPath()).full_name;
   } catch {
     throw new Error('Could not determine repository. Pass --repo <owner/repo>.');
   }

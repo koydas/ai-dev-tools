@@ -3,15 +3,13 @@
 // Usage: node scripts/gh-get-issue.mjs <issue-number> [--repo <owner/repo>]
 // Node ≥ 20, requires `gh` CLI authenticated
 
-import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { ghApi, repoPath, toIssue } from './gh-rest.mjs';
 
-const FIELDS = 'number,title,body,state,labels,assignees,author,comments,url,createdAt,updatedAt';
-
+// REST, not `gh issue view` (GraphQL) — see scripts/gh-rest.mjs. Same JSON fields as `gh issue view --json`.
 export function getIssue(number, repo) {
-  const args = ['issue', 'view', String(number), '--json', FIELDS];
-  if (repo) args.push('--repo', repo);
-  return JSON.parse(execFileSync('gh', args, { encoding: 'utf8' }));
+  const base = `${repoPath(repo)}/issues/${number}`;
+  return toIssue(ghApi(base), { comments: ghApi(`${base}/comments?per_page=100`, { paginate: true }) });
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

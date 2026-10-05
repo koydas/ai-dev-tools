@@ -41,7 +41,7 @@ Report sections:
 
 Each finding is tagged `[severity · origin]`: severity `High` / `Medium` / `Low`, origin `introduced` / `amplified` / `pre-existing`. Blocking: `introduced` findings of severity `High` or `Medium`, and `amplified` findings of severity `High`. Coverage gates declared in CI for a touched module are run and reported as an Evidence row.
 
-Checks only run when the working tree is exactly the PR head (HEAD = PR head SHA, clean `git status`). Run `gh pr checkout 42` on a clean tree first; otherwise the Evidence rows are `NOT_RUN` and the status is `NEEDS_REVIEW`. A check that fails identically on the base branch's CI is reported as `PRE_EXISTING` and does not block.
+Checks only run when the working tree is exactly the PR head (HEAD = PR head SHA, clean `git status`). Check out the PR head on a clean tree first (`git fetch origin pull/42/head && git checkout --detach FETCH_HEAD`; `gh pr checkout 42` also works where GraphQL is available); otherwise the Evidence rows are `NOT_RUN` and the status is `NEEDS_REVIEW`. A check that fails identically on the base branch's CI is reported as `PRE_EXISTING` and does not block.
 
 ## Human gates
 

@@ -98,7 +98,8 @@ node --test
 - **Scripts — security**: use `execFileSync(cmd, argsArray)` — never `execSync` with user-controlled string interpolation (shell injection)
 - **Scripts — CLI detection**: use `fileURLToPath(import.meta.url)` to compare against `process.argv[1]` (Windows-compatible)
 - **Scripts — portability**: no Unix utilities (`tail`, `head`, `grep`) — use native git options or plain JS
-- **Scripts — GitHub API**: always pass `--paginate` to `gh api` to avoid silently losing data past the first page
+- **Scripts — GitHub API**: always pass `--paginate` to `gh api` list endpoints to avoid silently losing data past the first page
+- **Scripts — REST only**: call `gh api` REST endpoints (helpers and mappers in `scripts/gh-rest.mjs`), not `gh pr view` / `gh issue view` / `gh repo view` / `gh pr checkout`, which go through GraphQL — refused in Claude Code cloud sessions. GraphQL only for data REST lacks, with a REST fallback (e.g. review-thread resolution in `gh-get-pr-threads.mjs`)
 - **Scripts — structure**: export the main functions AND provide a CLI entrypoint (`if process.argv[1] === fileURLToPath(import.meta.url)`)
 - **Agents / Commands / Skills**: Markdown only — no code
 - **Commands delegate**: a command is a pipeline definition, never an implementation
