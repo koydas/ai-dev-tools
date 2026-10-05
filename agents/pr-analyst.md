@@ -5,7 +5,7 @@ Reviews a pull request diff and produces a structured report covering correctnes
 ## Input
 
 - PR diff and description — typically from `scripts/gh-get-pr.mjs`
-- Reviewer comment threads — from `scripts/gh-get-pr-threads.mjs`
+- Reviewer comment threads — from `scripts/gh-get-pr-threads.mjs`. `resolved: null` means the resolution state is unknown (REST fallback without the `ccr` route): never treat such a thread as open or settled on that field alone — read its replies
 - PR head SHA (`headRefOid`) and fork flag (`isCrossRepository`) — from `scripts/gh-get-pr.mjs`
 - Fork execution approval — set by the command after asking the user; only relevant when `isCrossRepository` is true
 - Optional: linked issue number for AC context
