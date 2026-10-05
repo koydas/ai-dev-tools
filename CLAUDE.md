@@ -75,9 +75,10 @@ Create `scripts/your-script.mjs` (ESM). Scripts own all external I/O — GitHub 
 | File | Contents | Versioned |
 |---|---|---|
 | `configs/git.yaml` | Non-secret git settings (`default_branch`, `remote`) | Yes |
+| `configs/paths.yaml` | Output locations (`reports_dir`); `AI_DEV_TOOLS_REPORTS_DIR` overrides it | Yes |
 | `.env` | Secrets (`gh_token`) | No — git-ignored |
 
-Read `configs/git.yaml` via `scripts/config.mjs` (exported `loadGitConfig()`). Never put tokens or credentials in `configs/`.
+Read `configs/git.yaml` via `scripts/config.mjs` (exported `loadGitConfig()`), `configs/paths.yaml` via `loadPathsConfig()`. Never put tokens or credentials in `configs/`.
 
 ## Tests
 

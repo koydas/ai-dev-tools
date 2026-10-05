@@ -17,7 +17,7 @@ Produces a consistent, structured review for any PR — covering correctness, ri
 
 1. Fetches the PR diff, description, and existing review threads
 2. Runs `pr-analyst`, which gathers context (conventions, ADRs, git history, callers of changed symbols), runs the repo's own checks (tests, lint, type-check, declared scans), and produces a structured report — see [ADR-009](../adr/ADR-009-tool-grounded-review.md)
-3. Writes the report to `~/dev/pr-reviews/<pr-number>-<slug>.md`
+3. Writes the report to `<reports_dir>/<pr-number>-<slug>.md`, resolved by `scripts/report-path.mjs`: `AI_DEV_TOOLS_REPORTS_DIR`, else `reports_dir` in `configs/paths.yaml` (default `~/dev/pr-reviews`)
 4. Surfaces blocking issues immediately if any are found
 
 ## Output format

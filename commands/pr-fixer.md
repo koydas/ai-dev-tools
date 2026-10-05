@@ -5,8 +5,8 @@ Apply blocking fixes from an existing review file to the current branch.
 ## Steps
 
 1. Locate the review file:
-   - If an argument is provided (`$ARGUMENTS`), use it as the path or PR number to find the file in `~/dev/pr-reviews/`
-   - Otherwise, look for the most recent file in `~/dev/pr-reviews/` matching the current branch's PR number
+   - If an argument is provided (`$ARGUMENTS`), use it as the path, or as the PR number to find the file in the reports directory (`node scripts/report-path.mjs --dir`)
+   - Otherwise, look for the most recent file in the reports directory matching the current branch's PR number
 2. Read the blocking issues from the `### Review` → `**Blocking issues**` section
 3. Pass the blocking issues list and the current diff to the `code-builder` agent
 4. code-builder addresses each blocking issue in turn
