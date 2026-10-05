@@ -1,0 +1,6 @@
+# Output locations for ai-dev-tools commands (non-secret)
+
+# Directory where /pr-review writes reports and /pr-fixer reads them.
+# `~` expands to the home directory. Overridden by the AI_DEV_TOOLS_REPORTS_DIR env var
+# (e.g. a cloud session whose home directory the client cannot open).
+reports_dir: ~/dev/pr-reviews

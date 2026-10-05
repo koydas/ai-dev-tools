@@ -105,7 +105,7 @@ Next step and what to pass forward
 |---|---|---|
 | `/issue-code-generation [id] [--strict]` | `issue-router` → `ticket-analyst` → `code-builder-*` → (`code-challenger`) → `code-reviewer` | Full issue → code → AC validation pipeline. `--strict` activates critic-pair (code-challenger) before review |
 | `/resume [id] --repo <owner/repo> [--strict]` | — | Resume an interrupted `/issue-code-generation` run from its first missing checkpoint |
-| `/pr-review` | `pr-analyst` | Review PR, write structured report to `~/dev/pr-reviews/` |
+| `/pr-review` | `pr-analyst` | Review PR, write structured report to the reports directory (default `~/dev/pr-reviews/`) |
 | `/pr-fixer` | `code-builder` | Apply blocking fixes from an existing review file |
 | `/ac-check [id]` | `code-reviewer` | Validate code coverage against issue acceptance criteria |
 | `/bug-seeker [id]` | — | Interactive investigation — issue, logs, code → diagnostic report |
@@ -163,7 +163,8 @@ Next step and what to pass forward
 | `list-files.mjs` | Recursive numbered file listing | CLI |
 | `checkpoint.mjs` | Write / read / list pipeline checkpoints, namespaced by repo and issue | via `/issue-code-generation`, `/resume` |
 | `check-releases.mjs` | List repos with changes on main not yet in a release | via `/check-releases` |
-| `config.mjs` | `loadGitConfig()` — reads `configs/git.yaml` | library |
+| `config.mjs` | `loadGitConfig()` / `loadPathsConfig()` — read `configs/git.yaml` / `configs/paths.yaml` | library |
+| `report-path.mjs` | Resolve the review report path from PR JSON on stdin (`AI_DEV_TOOLS_REPORTS_DIR`, else `configs/paths.yaml`; refuses a non-ignored dir inside the working tree) | CLI / via commands |
 
 ---
 
