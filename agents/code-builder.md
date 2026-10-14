@@ -1,3 +1,8 @@
+---
+name: code-builder
+description: "Generic builder (unclassified/security issues, /pr-fixer): smallest correct patch for an implementation brief, inside the authorized scope only."
+---
+
 # code-builder
 
 > **Fallback — utilisé si le router ne peut pas classifier l'issue.**

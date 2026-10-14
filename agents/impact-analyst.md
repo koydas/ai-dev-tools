@@ -1,3 +1,8 @@
+---
+name: impact-analyst
+description: "Cross-repo blast-radius analysis of a proposed change: consumers, breaking changes, migrations."
+---
+
 # impact-analyst
 
 Analyzes the cross-repo blast radius of a proposed change. Identifies downstream consumers, breaking changes, required migrations, and communication needs before a change is implemented or merged.

@@ -1,3 +1,7 @@
+---
+description: "Turn the current sprint's features into slide-ready demo content"
+---
+
 # /demo-prep
 
 Convert the current sprint's features into slide-ready sprint demo content.

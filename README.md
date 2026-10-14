@@ -206,6 +206,32 @@ node ~/dev/ai-dev-tools/scripts/onboarding.mjs
 
 Then open `.env` and set `gh_token` (scope: `repo, read:org`). The file is git-ignored.
 
+### Use from another repository
+
+The repo is a Claude Code plugin and its own marketplace ([ADR-013](docs/adr/ADR-013-plugin-distribution-and-script-paths.md)). Commands call their scripts as `${CLAUDE_PLUGIN_ROOT}/scripts/…`, so they work from any working directory.
+
+**Local — declare it in the consuming repo's `.claude/settings.json`** (trusting the folder offers the install):
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "ai-dev-tools": { "source": { "source": "github", "repo": "koydas/ai-dev-tools" } }
+  },
+  "enabledPlugins": { "ai-dev-tools@ai-dev-tools": true }
+}
+```
+
+or once per machine: `/plugin install ai-dev-tools --marketplace koydas/ai-dev-tools`. Plugin components are namespaced: `/ai-dev-tools:pr-review`.
+
+**Cloud sessions (claude.ai/code)** don't install repository-declared plugins. Add this to the environment's setup script — it runs before Claude Code starts:
+
+```bash
+git clone --depth 1 https://github.com/koydas/ai-dev-tools "$HOME/ai-dev-tools" \
+  && node "$HOME/ai-dev-tools/scripts/sync-claude.mjs"
+```
+
+`sync-claude.mjs` writes the absolute clone path in place of `${CLAUDE_PLUGIN_ROOT}` in the copies under `~/.claude`.
+
 ### Sync after updates
 
 ```bash

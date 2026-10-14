@@ -1,3 +1,8 @@
+---
+description: "Audit Claude Code token usage — trends, model breakdown, command adoption"
+argument-hint: "[days]"
+---
+
 # /token-audit
 
 Audit Claude Code token usage — trends, model breakdown, and command adoption.
@@ -6,7 +11,7 @@ Audit Claude Code token usage — trends, model breakdown, and command adoption.
 
 1. Determine the audit window:
    - If an argument is provided (`$ARGUMENTS`), use it as the number of days to look back (default: 30)
-2. Run the audit script: `node scripts/token-audit.mjs --days $ARGUMENTS`
+2. Run the audit script: `node "${CLAUDE_PLUGIN_ROOT}/scripts/token-audit.mjs" --days $ARGUMENTS`
 3. Present the report to the user:
    - Total tokens consumed (input / output / cache)
    - Daily trend (tokens per day over the window)

@@ -1,9 +1,12 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync, rmSync } from 'node:fs';
+import { join, dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
-import { sync } from '../scripts/sync-claude.mjs';
+import { sync, resolvePluginRoot } from '../scripts/sync-claude.mjs';
+
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 function makeTempDir() {
   return mkdtempSync(join(tmpdir(), 'sync-test-'));
@@ -114,4 +117,68 @@ describe('sync-claude', () => {
     assert.ok(existsSync(join(dst, 'prompts', 'my-prompt.md')));
     cleanup(src, dst);
   });
+
+  test('replaces ${CLAUDE_PLUGIN_ROOT} with the absolute source root in .md files', () => {
+    const src = makeTempDir();
+    const dst = makeTempDir();
+    mkdirSync(join(src, 'commands'));
+    writeFileSync(join(src, 'commands', 'cmd.md'), 'run `node "${CLAUDE_PLUGIN_ROOT}/scripts/a.mjs"` then `${CLAUDE_PLUGIN_ROOT}/scripts/b.mjs`');
+
+    sync(src, dst);
+
+    const out = readFileSync(join(dst, 'commands', 'cmd.md'), 'utf8');
+    const root = resolve(src).replaceAll('\\', '/');
+    assert.equal(out, `run \`node "${root}/scripts/a.mjs"\` then \`${root}/scripts/b.mjs\``);
+    cleanup(src, dst);
+  });
+
+  test('a second sync of substituted content reports nothing updated', () => {
+    const src = makeTempDir();
+    const dst = makeTempDir();
+    mkdirSync(join(src, 'agents'));
+    writeFileSync(join(src, 'agents', 'a.md'), 'see ${CLAUDE_PLUGIN_ROOT}/scripts/x.mjs');
+
+    sync(src, dst);
+    const totals = sync(src, dst);
+
+    assert.equal(totals.new, 0);
+    assert.equal(totals.updated, 0);
+    cleanup(src, dst);
+  });
+
+  test('leaves non-Markdown files byte-identical', () => {
+    const src = makeTempDir();
+    const dst = makeTempDir();
+    mkdirSync(join(src, 'prompts'));
+    writeFileSync(join(src, 'prompts', 'raw.txt'), '${CLAUDE_PLUGIN_ROOT}');
+
+    sync(src, dst);
+
+    assert.equal(readFileSync(join(dst, 'prompts', 'raw.txt'), 'utf8'), '${CLAUDE_PLUGIN_ROOT}');
+    cleanup(src, dst);
+  });
+});
+
+describe('resolvePluginRoot', () => {
+  test('uses forward slashes for a Windows-style root', () => {
+    const out = resolvePluginRoot('${CLAUDE_PLUGIN_ROOT}/scripts/a.mjs', 'C:\\dev\\ai-dev-tools');
+    assert.ok(!out.includes('\\'), out);
+    assert.ok(out.endsWith('/scripts/a.mjs'), out);
+  });
+
+  test('returns content without the token unchanged', () => {
+    assert.equal(resolvePluginRoot('node other.mjs', '/x'), 'node other.mjs');
+  });
+});
+
+describe('command and agent script references (ADR-013)', () => {
+  for (const dir of ['commands', 'agents']) {
+    test(`${dir}/ never runs a script through a working-directory-relative path`, () => {
+      for (const name of readdirSync(join(REPO_ROOT, dir)).filter((f) => f.endsWith('.md'))) {
+        const text = readFileSync(join(REPO_ROOT, dir, name), 'utf8');
+        assert.doesNotMatch(text, /node \.?\/?scripts\//, `${dir}/${name}: use node "\${CLAUDE_PLUGIN_ROOT}/scripts/…"`);
+        assert.doesNotMatch(text, /["']\.\/scripts\//, `${dir}/${name}: use "\${CLAUDE_PLUGIN_ROOT}/scripts/…"`);
+      }
+    });
+  }
 });

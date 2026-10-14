@@ -1,10 +1,14 @@
+---
+description: "List repositories where main has commits not yet in a release tag"
+---
+
 # /check-releases
 
 List repositories where `main` has commits not yet included in a release tag.
 
 ## Steps
 
-1. Run the release check script: `node scripts/check-releases.mjs`
+1. Run the release check script: `node "${CLAUDE_PLUGIN_ROOT}/scripts/check-releases.mjs"`
    - The script reads configured repositories and for each one checks whether HEAD on `main` is reachable from the latest release tag
 2. Present the results:
    - Repos with unreleased commits: repo name, latest tag, number of commits ahead, first commit message

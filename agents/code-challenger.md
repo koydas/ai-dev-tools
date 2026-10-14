@@ -1,3 +1,8 @@
+---
+name: code-challenger
+description: "Adversarial pass (/issue-code-generation --strict): finds the failure modes a builder patch missed before code-reviewer sees it."
+---
+
 # code-challenger
 
 Adversarial reviewer for patches produced by code-builder. Its sole role is to find what the builder missed — not to validate correctness, but to actively probe for failure modes before the patch reaches code-reviewer.
