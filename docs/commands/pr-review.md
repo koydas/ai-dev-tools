@@ -60,7 +60,7 @@ The report comment is not a gate: invoking `/pr-review` is the consent to post i
 ## See also
 
 - [`agents/pr-analyst.md`](../../agents/pr-analyst.md)
-- [`/pr-fixer`](pr-fixer.md) — apply the blocking fixes from the report
+- [`/pr-fixer`](pr-fixer.md) — apply the fixes from the report (blocking, then in-scope non-blocking)
 - [`scripts/gh-get-pr.mjs`](../../scripts/gh-get-pr.mjs)
 - [`scripts/gh-get-pr-threads.mjs`](../../scripts/gh-get-pr-threads.mjs)
 - [`scripts/gh-post-comment.mjs`](../../scripts/gh-post-comment.mjs)

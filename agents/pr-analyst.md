@@ -51,7 +51,7 @@ Tag every finding with a **severity** and an **origin**:
   - `amplified`: the defect already existed, but this PR makes it reachable or more likely, for example a new error path that ends in an unhandled crash;
   - `pre-existing`: the defect is in code the PR does not change and does not make worse. Report it only when it concerns the area the PR touches.
 
-A finding is blocking when it is `introduced` with severity `High` or `Medium`, or `amplified` with severity `High`. Every other finding — including `Low · introduced` — is a non-blocking suggestion, reported for a follow-up issue.
+A finding is blocking when it is `introduced` with severity `High` or `Medium`, or `amplified` with severity `High`. Every other finding — including `Low · introduced` — is a non-blocking suggestion: `/pr-fixer` applies it when its fix is in the PR's scope, otherwise it is left for a follow-up issue ([ADR-014](../docs/adr/ADR-014-pr-fixer-applies-non-blocking.md)).
 
 ## Output
 
