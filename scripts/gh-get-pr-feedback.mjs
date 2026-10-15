@@ -2,7 +2,8 @@
 // PR feedback /pr-fixer acts on → JSON: the latest /pr-review report posted on the PR and the
 // comments, reviews and unresolved threads written by humans. Bots, generated comments (Claude
 // Code footer, pipeline markers) and authors of unknown type are left out — unknown ones are
-// listed so the caller can surface them (ADR-014).
+// listed so the caller can surface them (ADR-014). Only the repo's owner, members and collaborators
+// are trusted: a report or a request from anyone else is listed as unknown, never applied.
 // Usage: node scripts/gh-get-pr-feedback.mjs <pr-number> [--repo <owner/repo>]
 // Node ≥ 20, requires `gh` CLI authenticated. Threads and resolution state come from
 // gh-get-pr-threads.mjs (GraphQL, else REST — ADR-011); author types (`user.type`) from REST,
@@ -22,25 +23,33 @@ const GENERATED_PATTERNS = [
   /<!--\s*[a-z][\w-]*\s+[\w-]+=[^>]*-->/, // machine marker, e.g. <!-- adl-review sha=… verdict=… -->
 ];
 
+// REST `author_association` values whose text /pr-fixer may act on; any other (CONTRIBUTOR, NONE, …)
+// or a missing one is untrusted.
+const TRUSTED_ASSOCIATIONS = new Set(['OWNER', 'MEMBER', 'COLLABORATOR']);
+
 // Pure: one comment → 'pr-review' | 'bot' | 'generated' | 'human' | 'unknown'.
-export function classifyComment({ login = null, type = null, body = '' } = {}) {
+// A report or a human comment from an untrusted author is 'unknown': anyone can post on a public PR.
+export function classifyComment({ login = null, type = null, association = null, body = '' } = {}) {
   const text = body ?? '';
-  if (isPrReviewReport(text)) return 'pr-review';
+  const trusted = TRUSTED_ASSOCIATIONS.has(association);
+  if (isPrReviewReport(text)) return trusted ? 'pr-review' : 'unknown';
   if (type === 'Bot' || /\[bot\]$/.test(login ?? '')) return 'bot';
   if (GENERATED_PATTERNS.some((re) => re.test(text))) return 'generated';
-  if (type === 'User') return 'human';
+  if (type === 'User') return trusted ? 'human' : 'unknown';
   return 'unknown';
 }
 
-// Pure: REST items (issue comments, review comments, reviews) → Map of id and node_id → user.type.
+// Pure: REST items (issue comments, review comments, reviews) → Map of id and node_id →
+// { type: user.type, association: author_association }.
 export function authorTypeIndex(items) {
   if (!Array.isArray(items)) throw new Error('expected an array of REST items');
   const index = new Map();
   for (const item of items) {
     const type = item?.user?.type ?? null;
     if (!type) continue;
-    if (item.id != null) index.set(String(item.id), type);
-    if (item.node_id) index.set(String(item.node_id), type);
+    const author = { type, association: item.author_association ?? null };
+    if (item.id != null) index.set(String(item.id), author);
+    if (item.node_id) index.set(String(item.node_id), author);
   }
   return index;
 }
@@ -49,8 +58,11 @@ export function authorTypeIndex(items) {
 export function selectFeedback(activity, typeIndex) {
   if (!activity || !Array.isArray(activity.threads)) throw new Error('expected gh-get-pr-threads output with threads');
   if (!(typeIndex instanceof Map)) throw new Error('expected an author type index (Map)');
-  const typeOf = (id) => (id == null ? null : typeIndex.get(String(id)) ?? null);
-  const classify = (id, login, body) => classifyComment({ login, type: typeOf(id), body });
+  const authorOf = (id) => (id == null ? null : typeIndex.get(String(id)) ?? null);
+  const classify = (id, login, body) => {
+    const author = authorOf(id);
+    return classifyComment({ login, type: author?.type ?? null, association: author?.association ?? null, body });
+  };
   const excluded = { bot: 0, generated: 0 };
   const unknown = [];
   const tally = (cls, item) => {
