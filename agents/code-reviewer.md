@@ -74,7 +74,7 @@ For each failing check, read the relevant code and decide whether it is blocking
 **Blocking issues** (must fix before merge)
 1. ...
 
-**Non-blocking notes** (optional, low-risk observations)
+**Non-blocking notes** (low-risk observations, nits included — tag them `nit`; /pr-fixer applies them)
 - ...
 
 ### Handoff

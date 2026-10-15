@@ -15,7 +15,7 @@ Writes the patch to the working tree and never commits, stages, or pushes it —
 
 One of:
 - **From ticket-analyst**: the full `### Brief` block (summary, scope, AC, constraints)
-- **From /pr-fixer**: the blocking issues and the non-blocking findings of an existing review file (two labelled lists), plus the current diff. Fix every blocking issue first. Then fix each non-blocking finding whose fix stays in the PR's perimeter (the files the PR touches, plus the docs, tests and CI configuration of what it adds); skip it, with the reason, when it is `pre-existing` in code the PR does not touch, needs a new dependency or a public API / schema change the PR does not already make, or is not a code change ([ADR-014](../docs/adr/ADR-014-pr-fixer-applies-non-blocking.md))
+- **From /pr-fixer**: the blocking issues and the non-blocking findings of an existing review file (two labelled lists), plus the current diff. Fix every blocking issue first. Then fix each non-blocking finding whose fix stays in the PR's perimeter (the files the PR touches, plus the docs, tests and CI configuration of what it adds); a nit, a style point or a finding marked optional is fixed like any other — its weight is never a reason to skip. Skip a finding, with the reason, only when it is `pre-existing` in a file the PR does not touch, needs a new dependency or a public API / schema change the PR does not already make, or is not a code change ([ADR-014](../docs/adr/ADR-014-pr-fixer-applies-non-blocking.md))
 
 ## Output
 

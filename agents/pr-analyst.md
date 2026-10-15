@@ -45,7 +45,7 @@ For each failing check or suspicious finding, read the relevant code and decide 
 
 Tag every finding with a **severity** and an **origin**:
 
-- Severity: `High` (incorrect behavior, security exposure, data loss), `Medium` (a failure path that is not handled, or a real gap in a guarantee the PR claims), `Low` (robustness, clarity, cost).
+- Severity: `High` (incorrect behavior, security exposure, data loss), `Medium` (a failure path that is not handled, or a real gap in a guarantee the PR claims), `Low` (robustness, clarity, cost). A **nit** — naming, typo, style, dead code, stale or wrong comment, doc wording — is a `Low` finding tagged `nit` (`**[Low · introduced · nit]**`): report it, `/pr-fixer` applies it.
 - Origin:
   - `introduced`: the defect is in lines this PR adds or changes;
   - `amplified`: the defect already existed, but this PR makes it reachable or more likely, for example a new error path that ends in an unhandled crash;
@@ -87,6 +87,7 @@ One paragraph describing what this PR does.
 **Non-blocking suggestions**
 - **[Medium · amplified]** `path/to/file.ext:line` — description and concrete failure scenario (follow-up)
 - **[Low · pre-existing]** `path/to/file.ext:line` — description (optional improvement)
+- **[Low · introduced · nit]** `path/to/file.ext:line` — typo / naming / stale comment
 
 **Test coverage**
 - [ ] Scenario not covered

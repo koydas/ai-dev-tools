@@ -19,8 +19,8 @@ Closes the loop between `/pr-review` and a clean, mergeable branch. Takes the fi
 
 1. Reads the blocking issues and the non-blocking suggestions (`**Non-blocking suggestions**` / `**Non-blocking notes**`) from the review file
 2. Runs `code-builder` with both lists and the current diff — blocking first
-3. Applies a non-blocking finding only when its fix stays in the PR's scope; otherwise skips it with the reason:
-   - `pre-existing` finding in code the PR does not touch
+3. Applies every non-blocking finding whose fix stays in the PR's scope — **nits** (naming, typos, style, stale comments) and findings marked optional included: being minor is never a reason to skip. Otherwise skips it with the reason:
+   - `pre-existing` finding in a file the PR does not touch
    - the fix needs a new dependency, or changes a public API / schema the PR does not already change
    - not a code change (label, issue, process action) — reported for the human
 4. Fetches the base branch's CI results (`scripts/gh-get-check-runs.mjs`) and re-runs `code-reviewer` on the updated diff — including the repo's checks against the fixed working tree ([ADR-009](../adr/ADR-009-tool-grounded-review.md))
