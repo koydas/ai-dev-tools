@@ -74,12 +74,12 @@ For each failing check, read the relevant code and decide whether it is blocking
 **Blocking issues** (must fix before merge)
 1. ...
 
-**Non-blocking notes** (optional, low-risk observations)
+**Non-blocking notes** (low-risk observations, nits included — tag them `nit`; /pr-fixer applies them)
 - ...
 
 ### Handoff
 If DONE: ready for human review and merge.
-If NEEDS_REVIEW: pass the blocking issues list to /pr-fixer or back to code-builder.
+If NEEDS_REVIEW: pass the blocking issues list to /pr-fixer or back to code-builder (/pr-fixer also applies the in-scope non-blocking notes).
 ```
 
 Result values: `PASS`, `FAIL`, `N/A` (the repo declares no such check), `NOT_RUN` (a check exists but was not executed — always give the reason), `PRE_EXISTING` (also failing in the base CI results passed as input, check run URL cited — reported, not blocking).

@@ -57,7 +57,7 @@ export function buildThreads(pages) {
           createdAt: root.createdAt,
           resolved: thread.isResolved === true,
           outdated: thread.isOutdated === true,
-          replies: replies.map((r) => ({ author: r.author?.login ?? null, body: r.body, createdAt: r.createdAt })),
+          replies: replies.map((r) => ({ id: r.databaseId, author: r.author?.login ?? null, body: r.body, createdAt: r.createdAt })),
         };
       });
   });
@@ -79,7 +79,7 @@ export function buildThreadsFromRest(comments, ccrThreads = null) {
     createdAt: root.created_at,
     resolved: meta.resolved,
     outdated: meta.outdated,
-    replies: replies.map((r) => ({ author: r.user?.login ?? null, body: r.body, createdAt: r.created_at })),
+    replies: replies.map((r) => ({ id: r.id, author: r.user?.login ?? null, body: r.body, createdAt: r.created_at })),
   });
 
   const threads = [];
@@ -119,8 +119,11 @@ function getPrThreadsGraphql(prNumber, ownerRepo) {
   };
 }
 
-function getPrThreadsRest(prNumber, ownerRepo) {
+// `prefetched` ({ issueComments, reviewComments, reviews }): REST lists the caller already holds,
+// reused instead of fetched again (gh-get-pr-feedback.mjs needs them for author types).
+function getPrThreadsRest(prNumber, ownerRepo, prefetched = {}) {
   const base = `repos/${ownerRepo}`;
+  const list = (key, endpoint) => prefetched[key] ?? restList(endpoint);
   let ccrThreads = null;
   try {
     ccrThreads = restList(`${base}/pulls/${prNumber}/ccr/review_threads`);
@@ -128,17 +131,17 @@ function getPrThreadsRest(prNumber, ownerRepo) {
   return {
     source: ccrThreads ? 'rest+ccr' : 'rest',
     ...mapRestPrActivity({
-      reviews: restList(`${base}/pulls/${prNumber}/reviews`),
+      reviews: list('reviews', `${base}/pulls/${prNumber}/reviews`),
       requested: JSON.parse(gh(['api', '--paginate', `${base}/pulls/${prNumber}/requested_reviewers`])),
-      issueComments: restList(`${base}/issues/${prNumber}/comments`),
+      issueComments: list('issueComments', `${base}/issues/${prNumber}/comments`),
     }),
-    threads: buildThreadsFromRest(restList(`${base}/pulls/${prNumber}/comments`), ccrThreads),
+    threads: buildThreadsFromRest(list('reviewComments', `${base}/pulls/${prNumber}/comments`), ccrThreads),
   };
 }
 
-export function getPrThreads(prNumber, repo) {
+export function getPrThreads(prNumber, repo, prefetched = {}) {
   const ownerRepo = resolveRepo(repo);
-  return withGraphqlFallback(() => getPrThreadsGraphql(prNumber, ownerRepo), () => getPrThreadsRest(prNumber, ownerRepo));
+  return withGraphqlFallback(() => getPrThreadsGraphql(prNumber, ownerRepo), () => getPrThreadsRest(prNumber, ownerRepo, prefetched));
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
