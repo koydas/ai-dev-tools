@@ -1,3 +1,8 @@
+---
+name: code-builder-feature
+description: "Feature builder for /issue-code-generation: smallest correct patch with every acceptance criterion traced to code. Writes to the working tree, never commits."
+---
+
 # code-builder-feature
 
 Produces the smallest correct patch that implements a new feature. Derives the implementation plan directly from the acceptance criteria — every AC item must be traceable to code or a deliberate exclusion.

@@ -1,0 +1,12 @@
+{
+  "name": "ai-dev-tools",
+  "description": "koydas/ai-dev-tools as a Claude Code plugin marketplace (ADR-013)",
+  "owner": { "name": "koydas" },
+  "plugins": [
+    {
+      "name": "ai-dev-tools",
+      "source": "./",
+      "description": "Human-gated issue → patch → review pipelines: commands, agents and their GitHub I/O scripts"
+    }
+  ]
+}

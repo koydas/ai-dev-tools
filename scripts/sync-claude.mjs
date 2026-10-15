@@ -4,13 +4,22 @@
 // Node ≥ 20, no external dependencies
 
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readdirSync, readFileSync, copyFileSync } from 'node:fs';
-import { join, relative, dirname } from 'node:path';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join, relative, dirname, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const SCRIPTS_DIR = dirname(fileURLToPath(import.meta.url));
 const SYNC_DIRS = ['commands', 'agents', 'prompts'];
+const PLUGIN_ROOT_TOKEN = '${CLAUDE_PLUGIN_ROOT}';
+
+// Commands and agents call scripts as `${CLAUDE_PLUGIN_ROOT}/scripts/...` (ADR-013).
+// Claude Code substitutes the token only for plugin-installed content, so a copy into
+// ~/.claude gets the absolute repo root instead. Forward slashes: the path lands in
+// shell commands and ESM import specifiers.
+export function resolvePluginRoot(content, srcRoot) {
+  return content.split(PLUGIN_ROOT_TOKEN).join(resolve(srcRoot).replaceAll('\\', '/'));
+}
 
 export function sync(srcRoot, dstRoot) {
   mkdirSync(dstRoot, { recursive: true });
@@ -34,14 +43,15 @@ export function sync(srcRoot, dstRoot) {
     for (const rel of srcFiles) {
       const src = join(srcDir, rel);
       const dst = join(dstDir, rel);
+      const content = render(src, srcRoot);
 
       if (!existsSync(dst)) {
         mkdirSync(dirname(dst), { recursive: true });
-        copyFileSync(src, dst);
+        writeFileSync(dst, content);
         console.log(`  [new]     ${dirName}/${rel}`);
         counts.new++;
-      } else if (md5(src) !== md5(dst)) {
-        copyFileSync(src, dst);
+      } else if (md5(content) !== md5(readFileSync(dst))) {
+        writeFileSync(dst, content);
         console.log(`  [updated] ${dirName}/${rel}`);
         counts.updated++;
       }
@@ -67,8 +77,14 @@ export function sync(srcRoot, dstRoot) {
   return totals;
 }
 
-function md5(filePath) {
-  return createHash('md5').update(readFileSync(filePath)).digest('hex');
+function render(filePath, srcRoot) {
+  const raw = readFileSync(filePath);
+  if (!filePath.endsWith('.md')) return raw;
+  return resolvePluginRoot(raw.toString('utf8'), srcRoot);
+}
+
+function md5(content) {
+  return createHash('md5').update(content).digest('hex');
 }
 
 function collectFiles(dir) {

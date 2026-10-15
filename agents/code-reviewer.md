@@ -1,3 +1,8 @@
+---
+name: code-reviewer
+description: "Validates a diff against acceptance criteria for bugs, regressions, scope violations and missing tests, grounded in executed repository checks."
+---
+
 # code-reviewer
 
 Validates a diff against acceptance criteria to find bugs, regressions, scope violations, and missing tests. Does not suggest style improvements — focuses exclusively on correctness and AC coverage. Grounds its verdict in executed evidence: it runs the repository's checks and re-executes the builder's evidence rather than trusting it ([ADR-009](../docs/adr/ADR-009-tool-grounded-review.md)).

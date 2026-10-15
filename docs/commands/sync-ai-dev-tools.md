@@ -30,6 +30,8 @@ node ~/dev/ai-dev-tools/scripts/sync-claude.mjs
 
 Source directories that do not yet exist are skipped silently.
 
+In `.md` files, `${CLAUDE_PLUGIN_ROOT}` is replaced by the absolute path of the source repo (forward slashes), so commands and agents find their scripts from any working directory ([ADR-013](../adr/ADR-013-plugin-distribution-and-script-paths.md)). A file is reported `updated` when its substituted content differs from the target.
+
 ## Output format
 
 Each file processed is reported on a single line:

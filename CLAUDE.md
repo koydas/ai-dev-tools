@@ -102,6 +102,9 @@ node --test
 - **Scripts — GraphQL fallback**: a script that uses GraphQL (incl. `gh pr view` / `gh repo view`) falls back to REST when it fails — pure, tested REST→shape mappers; a field REST cannot provide is `null` (unknown), never a default; output carries `source` ([ADR-011](docs/adr/ADR-011-graphql-rest-fallback.md), shared helpers in `scripts/gh-transport.mjs`)
 - **Scripts — structure**: export the main functions AND provide a CLI entrypoint (`if process.argv[1] === fileURLToPath(import.meta.url)`)
 - **Agents / Commands / Skills**: Markdown only — no code
+- **Agents / Commands — frontmatter**: agents carry `name` + `description`, commands `description` (+ `argument-hint`); without it an agent is not a registered subagent
+- **Agents / Commands — script paths**: always `node "${CLAUDE_PLUGIN_ROOT}/scripts/<name>.mjs"`, never `node scripts/…` — commands run from the consuming repo's working directory ([ADR-013](docs/adr/ADR-013-plugin-distribution-and-script-paths.md)); `tests/sync-claude.test.mjs` enforces it
+- **Plugin version**: bump `version` in `.claude-plugin/plugin.json` when a change to `commands/`, `agents/` or `scripts/` must reach plugin installs
 - **Commands delegate**: a command is a pipeline definition, never an implementation
 - **Human gates**: invocation (user types the command), review (`NEEDS_REVIEW` status), merge (no autonomous push to main)
 

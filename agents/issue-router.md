@@ -1,3 +1,8 @@
+---
+name: issue-router
+description: "Classifies a GitHub issue as bug, feature, refactor or security to select the code-builder variant. Read-only."
+---
+
 # issue-router
 
 Classifies a GitHub issue into one of four types and routes to the appropriate code-builder variant. Reads the issue title, body, and labels — never modifies anything.

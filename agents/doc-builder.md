@@ -1,3 +1,8 @@
+---
+name: doc-builder
+description: "Generates or updates documentation (README, ADR, API docs) from repository and branch context."
+---
+
 # doc-builder
 
 Generates or updates documentation from repository and branch context. Supports READMEs, Architecture Decision Records, API documentation, and inline code documentation. Writes output to the appropriate location in the repo.

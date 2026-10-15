@@ -1,10 +1,15 @@
+---
+description: "Interactive investigation — correlate issue, logs and code into a diagnostic report"
+argument-hint: "<issue-number>"
+---
+
 # /bug-seeker
 
 Interactive investigation — correlate issue, logs, and code to produce a diagnostic report.
 
 ## Steps
 
-1. Fetch the issue: `node scripts/gh-get-issue.mjs $ARGUMENTS`
+1. Fetch the issue: `node "${CLAUDE_PLUGIN_ROOT}/scripts/gh-get-issue.mjs" $ARGUMENTS`
 2. Read the issue title, body, and any reproduction steps or error messages
 3. Search the codebase for the relevant code paths mentioned in the issue:
    - Entry points, error boundaries, and data flow related to the symptom

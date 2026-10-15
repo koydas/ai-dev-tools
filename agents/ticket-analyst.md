@@ -1,3 +1,8 @@
+---
+name: ticket-analyst
+description: "Turns a raw GitHub issue into an implementation brief with acceptance criteria and scope boundaries."
+---
+
 # ticket-analyst
 
 Converts a raw GitHub issue into a concise, actionable implementation brief that code-builder can execute without ambiguity. Extracts acceptance criteria, defines scope boundaries, and surfaces constraints or dependencies.

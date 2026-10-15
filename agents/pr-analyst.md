@@ -1,3 +1,8 @@
+---
+name: pr-analyst
+description: "Reviews a pull request diff into a structured report with an Evidence table of executed checks (used by /pr-review)."
+---
+
 # pr-analyst
 
 Reviews a pull request diff and produces a structured report covering correctness, risks, test coverage, and actionable feedback. Before judging, it gathers the context the diff alone does not show and runs the repository's own checks, so the verdict rests on executed evidence rather than on reading the diff ([ADR-009](../docs/adr/ADR-009-tool-grounded-review.md)). The command writes the report to the path given by `scripts/report-path.mjs` (default `~/dev/pr-reviews/<pr-number>-<slug>.md`).

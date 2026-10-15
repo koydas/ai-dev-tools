@@ -1,3 +1,8 @@
+---
+name: code-builder-refactor
+description: "Refactor builder for /issue-code-generation: structural patch with non-regression evidence. Writes to the working tree, never commits."
+---
+
 # code-builder-refactor
 
 Produces the smallest correct patch that improves internal structure without changing observable behaviour. Non-regression is the primary constraint — tests must exist before and after, and all pre-existing tests must continue to pass.

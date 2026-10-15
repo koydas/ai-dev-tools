@@ -1,3 +1,8 @@
+---
+name: code-builder-bug
+description: "Bug-fix builder for /issue-code-generation: reproduction test that fails before the fix, then the smallest correct patch. Writes to the working tree, never commits."
+---
+
 # code-builder-bug
 
 Produces the smallest correct patch that fixes a confirmed bug. Mandates reproduction before any fix — a patch without a reproduction step is not acceptable output.
