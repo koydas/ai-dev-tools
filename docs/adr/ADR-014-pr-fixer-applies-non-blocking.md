@@ -9,6 +9,8 @@
 
 ## Decision
 
+- **Two sources only: the `/pr-review` report and humans.** `/pr-fixer` reads the local report (or the latest one posted on the PR) and the human comments, review bodies and unresolved threads of the PR (`scripts/gh-get-pr-feedback.mjs`). Bots (`type: Bot`, `[bot]` logins — Codex, Claude Code Review, CI), generated comments on a human account (Claude Code footer, machine markers like `<!-- adl-review … -->`) and resolved threads are never read; authors of unknown type are listed, not applied. Classification is a pure, tested function — the author's login alone cannot tell a human from a tool posting with their token.
+- A human comment is a request under the same scope rule; one that asks for no change or needs a design decision is skipped with the reason. Nothing is posted: `/pr-fixer` drafts one reply per human thread for the human to post after committing.
 - `/pr-fixer` applies the blocking issues first, then the non-blocking findings of the report (`**Non-blocking suggestions**` from pr-analyst, `**Non-blocking notes**` from code-reviewer).
 - **Nits are findings.** pr-analyst reports naming, typo, style, dead-code, stale-comment and doc-wording issues as `Low` findings tagged `nit`; code-reviewer tags them `nit` in its non-blocking notes. `/pr-fixer` applies them like any other non-blocking finding: `nit`, `style` or `optional` is never a reason to skip.
 - **Scope rule** — a non-blocking finding is applied only when its fix stays in the PR's perimeter: the files the PR touches, plus the docs, tests and CI configuration of what the PR adds. It is skipped, with the reason stated, when:
@@ -26,11 +28,14 @@
 - Skips are explicit, with a reason — a finding is never silently dropped
 
 **Negative**
+- A tool that posts on a human account without a marker is read as human (e.g. the autonomous-dev-loop pipeline's review body) — fixed at the source by adding a marker; code-builder skips it when it asks for nothing
 - Larger patches per `/pr-fixer` run; the re-review covers more lines
 - A Low finding the author would have declined is applied unless they pass `--blocking-only` or revert it at the review gate
 
 ## Alternatives considered
 
+- **Read every PR comment, bots included** — rejected: bot findings (Codex, Claude Code Review) have their own triage; the author decides which reviewers `/pr-fixer` answers to (2026-10-15)
+- **Classify by login** — rejected: `/pr-review`, pipelines and the author all post with the author's token
 - **Skip nits / optional findings** — rejected: they are the cheapest fixes and the most often lost; the author asked for them explicitly (2026-10-15)
 - **Opt-in flag (`--all`)** — rejected: the default is what runs, and the default left the findings unfiled
 - **Apply every finding, scope ignored** — rejected: widens a PR into unrelated code, against code-builder's authorized-scope rule

@@ -15,7 +15,7 @@ test('buildThreads: root comment, replies and resolution state', () => {
   assert.deepEqual(t, {
     id: 1, threadId: 'PRRT_1', path: 'src/a.mjs', line: 10, author: 'alice', body: 'root',
     createdAt: '2026-01-01T00:00:00Z', resolved: true, outdated: false,
-    replies: [{ author: 'bob', body: 'reply', createdAt: '2026-01-02T00:00:00Z' }],
+    replies: [{ id: 2, author: 'bob', body: 'reply', createdAt: '2026-01-02T00:00:00Z' }],
   });
 });
 
@@ -67,7 +67,7 @@ test('buildThreadsFromRest: ccr data gives resolution and outdated state per thr
   assert.deepEqual(a, {
     id: 11, threadId: null, path: 'scripts/lib/output_writer.mjs', line: 94, author: 'koydas', body: 'root A',
     createdAt: '2026-10-01T00:00:00Z', resolved: true, outdated: false,
-    replies: [{ author: 'bot', body: 'reply A', createdAt: '2026-10-02T00:00:00Z' }],
+    replies: [{ id: 12, author: 'bot', body: 'reply A', createdAt: '2026-10-02T00:00:00Z' }],
   });
   assert.equal(b.resolved, false);
   assert.equal(b.outdated, true);

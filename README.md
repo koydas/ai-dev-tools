@@ -106,7 +106,7 @@ Next step and what to pass forward
 | `/issue-code-generation [id] [--strict]` | `issue-router` → `ticket-analyst` → `code-builder-*` → (`code-challenger`) → `code-reviewer` | Full issue → code → AC validation pipeline. `--strict` activates critic-pair (code-challenger) before review |
 | `/resume [id] --repo <owner/repo> [--strict]` | — | Resume an interrupted `/issue-code-generation` run from its first missing checkpoint |
 | `/pr-review` | `pr-analyst` | Review PR, write structured report to the reports directory (default `~/dev/pr-reviews/`) and post it on the PR |
-| `/pr-fixer` | `code-builder` | Apply the fixes of an existing review file — blocking issues, then in-scope non-blocking suggestions (`--blocking-only` to skip them, ADR-014) |
+| `/pr-fixer` | `code-builder` | Apply the fixes of the `/pr-review` report and of human PR comments (bots ignored) — blocking issues, then in-scope non-blocking findings and nits (`--blocking-only` to skip them, ADR-014) |
 | `/ac-check [id]` | `code-reviewer` | Validate code coverage against issue acceptance criteria |
 | `/bug-seeker [id]` | — | Interactive investigation — issue, logs, code → diagnostic report |
 | `/issue-notes [id]` | — | Generate technical overview, post as GitHub issue comment |
@@ -153,6 +153,7 @@ Next step and what to pass forward
 | `sync-claude.mjs` | Incremental sync from `ai-dev-tools` → `~/.claude` (reports new/updated/extra) | CLI / via `/sync-ai-dev-tools` |
 | `gh-get-issue.mjs` | Fetch GitHub issue by number → JSON — GraphQL, else REST (`source` in output, ADR-011) | CLI / via commands |
 | `gh-get-pr.mjs` | Fetch PR by number, `owner/repo#n`, URL or source branch — GraphQL, else REST (`source` in output, ADR-011) | CLI / via commands |
+| `gh-get-pr-feedback.mjs` | PR feedback for `/pr-fixer`: latest `/pr-review` report + human comments, reviews, unresolved threads; bots and generated comments filtered (ADR-014) | via `/pr-fixer` |
 | `gh-get-pr-threads.mjs` | Fetch reviewer comment threads for a PR — GraphQL, else REST (resolution from the session's `ccr/review_threads` route, else `null`) | CLI / via commands |
 | `gh-transport.mjs` | Shared GitHub transport: GraphQL → REST fallback, paginated REST lists, repo detection, REST → `gh pr view` mappers (ADR-011) | library |
 | `normalize-pr.mjs` | Map a PR fetched through GitHub MCP / REST to the `gh-get-pr.mjs` fields — delegates to `gh-get-pr.mjs` `mapRestPr` (ADR-010, ADR-011) | CLI / via commands |

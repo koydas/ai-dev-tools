@@ -1,6 +1,6 @@
 # /pr-fixer
 
-Apply the fixes from an existing review report to the current branch: blocking issues first, then the non-blocking suggestions whose fix is in the PR's scope.
+Apply the fixes from the `/pr-review` report and from human PR comments to the current branch: blocking issues first, then the non-blocking findings and human requests whose fix is in the PR's scope.
 
 ## Purpose
 
@@ -17,15 +17,16 @@ Closes the loop between `/pr-review` and a clean, mergeable branch. Takes the fi
 
 ## What it does
 
-1. Reads the blocking issues and the non-blocking suggestions (`**Non-blocking suggestions**` / `**Non-blocking notes**`) from the review file
-2. Runs `code-builder` with both lists and the current diff — blocking first
-3. Applies every non-blocking finding whose fix stays in the PR's scope — **nits** (naming, typos, style, stale comments) and findings marked optional included: being minor is never a reason to skip. Otherwise skips it with the reason:
+1. Reads the blocking issues and the non-blocking suggestions (`**Non-blocking suggestions**` / `**Non-blocking notes**`) from the review file — or from the latest `/pr-review` report posted on the PR when there is no local file
+2. Reads the human feedback with `scripts/gh-get-pr-feedback.mjs`: comments, review bodies and unresolved threads written by humans. **Only two sources are read — the `/pr-review` report and humans.** Left out: bots (`type: Bot`, `[bot]` logins — Codex, Claude Code Review, CI), generated comments on a human account (Claude Code footer, machine markers such as `<!-- adl-review … -->`), resolved threads. Authors whose type cannot be determined are listed, not applied
+3. Runs `code-builder` with the report's lists, the human feedback and the current diff — blocking first. A human comment that asks for no change (question, approval) or needs a design decision is skipped with the reason
+4. Applies every non-blocking finding whose fix stays in the PR's scope — **nits** (naming, typos, style, stale comments) and findings marked optional included: being minor is never a reason to skip. Otherwise skips it with the reason:
    - `pre-existing` finding in a file the PR does not touch
    - the fix needs a new dependency, or changes a public API / schema the PR does not already change
    - not a code change (label, issue, process action) — reported for the human
-4. Fetches the base branch's CI results (`scripts/gh-get-check-runs.mjs`) and re-runs `code-reviewer` on the updated diff — including the repo's checks against the fixed working tree ([ADR-009](../adr/ADR-009-tool-grounded-review.md))
-5. If issues remain, surfaces them — does not loop automatically
-6. If clean, presents the updated patch for human review, with each finding marked applied or skipped
+5. Fetches the base branch's CI results (`scripts/gh-get-check-runs.mjs`) and re-runs `code-reviewer` on the updated diff — including the repo's checks against the fixed working tree ([ADR-009](../adr/ADR-009-tool-grounded-review.md))
+6. If issues remain, surfaces them — does not loop automatically
+7. If clean, presents the updated patch for human review, with each finding and human comment marked applied or skipped, and a draft reply per human thread (nothing is posted)
 
 ## Output
 

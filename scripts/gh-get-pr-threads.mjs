@@ -57,7 +57,7 @@ export function buildThreads(pages) {
           createdAt: root.createdAt,
           resolved: thread.isResolved === true,
           outdated: thread.isOutdated === true,
-          replies: replies.map((r) => ({ author: r.author?.login ?? null, body: r.body, createdAt: r.createdAt })),
+          replies: replies.map((r) => ({ id: r.databaseId, author: r.author?.login ?? null, body: r.body, createdAt: r.createdAt })),
         };
       });
   });
@@ -79,7 +79,7 @@ export function buildThreadsFromRest(comments, ccrThreads = null) {
     createdAt: root.created_at,
     resolved: meta.resolved,
     outdated: meta.outdated,
-    replies: replies.map((r) => ({ author: r.user?.login ?? null, body: r.body, createdAt: r.created_at })),
+    replies: replies.map((r) => ({ id: r.id, author: r.user?.login ?? null, body: r.body, createdAt: r.created_at })),
   });
 
   const threads = [];
