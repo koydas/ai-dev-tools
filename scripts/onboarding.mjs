@@ -123,10 +123,19 @@ function removeLink(path) {
   }
 }
 
-// Before ADR-015, ~/.claude/skills/ was a link to <repo>/skills/ — a directory that no longer
-// exists. Remove that link only; a real ~/.claude/skills/ directory holds the user's own skills.
+// Before ADR-015, ~/.claude/skills/ was a link to <clone>/skills/ — possibly another clone, now
+// moved or deleted. Remove a link to this clone's skills/ or to a pre-ADR-015 skills/ (it holds
+// scope-guard.md); report any other dangling link. A real directory holds the user's own skills.
 function removeLegacySkillsLink(dst, dryRun) {
-  if (linkTarget(dst) !== resolve(REPO_ROOT, 'skills')) return;
+  const target = linkTarget(dst);
+  if (!target) return;
+  const legacy = target === resolve(REPO_ROOT, 'skills') || existsSync(join(target, 'scope-guard.md'));
+  if (!legacy) {
+    if (!existsSync(target)) {
+      console.log(`  warning: ${dst} is a dangling link (→ ${target}) — remove it to install Agent Skills there`);
+    }
+    return;
+  }
   if (dryRun) {
     console.log(`  [dry-run] would remove legacy link: ${dst}`);
     return;
