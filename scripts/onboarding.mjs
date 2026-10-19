@@ -3,7 +3,7 @@
 // Usage: node scripts/onboarding.mjs [--workspace <path>] [--claude-dir <path>] [--dry-run]
 // Node ≥ 20, no external dependencies
 
-import { existsSync, mkdirSync, copyFileSync, writeFileSync, symlinkSync, readdirSync, lstatSync, readlinkSync, unlinkSync } from 'node:fs';
+import { existsSync, mkdirSync, copyFileSync, writeFileSync, symlinkSync, readdirSync, lstatSync, readlinkSync, unlinkSync, rmdirSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { homedir, platform } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -100,23 +100,38 @@ function deployFile(src, dst, dryRun) {
   console.log(`  copied: ${dst}`);
 }
 
+// Resolved target of the link at `path`; null when `path` is something else, undefined when absent.
+// A dangling link is still a link: existsSync() would report it absent and symlinkSync() then fail.
+function linkTarget(path) {
+  let stat;
+  try {
+    stat = lstatSync(path);
+  } catch {
+    return undefined;
+  }
+  if (!stat.isSymbolicLink()) return null;
+  const target = readlinkSync(path).replace(/^\\\\\?\\/, ''); // junctions read back as \\?\C:\...
+  return resolve(dirname(path), target);
+}
+
+function removeLink(path) {
+  try {
+    unlinkSync(path);
+  } catch (err) {
+    if (err.code !== 'EPERM' && err.code !== 'EISDIR') throw err;
+    rmdirSync(path); // Windows directory junction
+  }
+}
+
 // Before ADR-015, ~/.claude/skills/ was a link to <repo>/skills/ — a directory that no longer
 // exists. Remove that link only; a real ~/.claude/skills/ directory holds the user's own skills.
 function removeLegacySkillsLink(dst, dryRun) {
-  let stat;
-  try {
-    stat = lstatSync(dst);
-  } catch {
-    return;
-  }
-  if (!stat.isSymbolicLink()) return;
-  const target = readlinkSync(dst).replace(/^\\\\\?\\/, ''); // junctions read back as \\?\C:\...
-  if (resolve(dirname(dst), target) !== resolve(REPO_ROOT, 'skills')) return;
+  if (linkTarget(dst) !== resolve(REPO_ROOT, 'skills')) return;
   if (dryRun) {
     console.log(`  [dry-run] would remove legacy link: ${dst}`);
     return;
   }
-  unlinkSync(dst);
+  removeLink(dst);
   console.log(`  removed legacy link: ${dst}`);
 }
 
@@ -126,17 +141,29 @@ function linkRules(src, dst, dryRun) {
     return;
   }
 
-  if (existsSync(dst)) {
-    console.log(`  already exists: ${dst}`);
+  const current = linkTarget(dst);
+  if (current === resolve(src)) {
+    console.log(`  already linked: ${dst} → ${src}`);
     return;
+  }
+  if (current === null) {
+    // Not a link: user content we must not overwrite.
+    throw new Error(`${dst} exists and is not a link — move it away, then re-run onboarding`);
   }
 
   if (dryRun) {
+    if (current) console.log(`  [dry-run] would replace stale link: ${dst} → ${current}`);
     console.log(`  [dry-run] link ${dst} → ${src}`);
     return;
   }
 
   mkdirSync(dirname(dst), { recursive: true });
+
+  // A link to another clone (relocated, or an old checkout) — possibly dangling.
+  if (current) {
+    removeLink(dst);
+    console.log(`  replaced stale link: ${dst} → ${current}`);
+  }
 
   if (platform() === 'win32') {
     // Windows: create a directory junction
