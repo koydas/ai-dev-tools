@@ -1,31 +1,18 @@
 # Workspace
 
-This file is the workspace orchestrator for Claude Code. It routes to per-repo `CLAUDE.md` files and injects the relevant skills based on which files are being touched.
+This file is the workspace orchestrator for Claude Code. It routes to per-repo `CLAUDE.md` files; conventions load as rules (below).
 
 ---
 
-## Skill routing
+## Rules
 
-The following skills are active based on the current task context. Load the relevant skill file(s) before reasoning about conventions, patterns, or implementation:
+Conventions are Claude Code rules, linked at `~/.claude/rules/ai-dev-tools/` → `<ai-dev-tools>/rules/` by onboarding ([ADR-015](https://github.com/koydas/ai-dev-tools/blob/main/docs/adr/ADR-015-conventions-as-path-scoped-rules.md)). Claude Code loads them itself — no import here:
 
-### Always active
-
-@~/.claude/skills/scope-guard.md
-@~/.claude/skills/wiki-first.md
-
-### Git operations (commits, branches, PRs, merges)
-
-@~/.claude/skills/git-conventions.md
-@~/.claude/skills/branch-pr.md
-
-### C# / .NET files (`*.cs`, `*.csproj`, `*.sln`)
-
-@~/.claude/skills/dotnet-repository.md
-
-### Vue files (`*.vue`, `components/`, `views/`, `stores/`, `services/`)
-
-@~/.claude/skills/vue-ui.md
-@~/.claude/skills/vue-service.md
+| Rule | Loaded |
+|---|---|
+| `scope-guard`, `wiki-first`, `git-conventions`, `branch-pr` | Every session |
+| `dotnet-repository` | When a `*.cs`, `*.csproj` or `*.sln` file is read or edited |
+| `vue-ui`, `vue-service` | When a `*.vue` file, or a `.ts`/`.js` file under `src/components`, `views`, `services` or `stores`, is read or edited |
 
 ---
 
@@ -41,6 +28,6 @@ Add an entry for each repo in your workspace:
 
 ## Notes
 
-- Skills are symlinked at `~/.claude/skills/` → `<ai-dev-tools>/skills/` — changes are live immediately
+- Rules are symlinked at `~/.claude/rules/ai-dev-tools/` → `<ai-dev-tools>/rules/` — changes are live at the next session
 - Commands and agents are deployed to `~/.claude/commands/` and `~/.claude/agents/` via `/sync-ai-dev-tools`
-- The `scope-guard` and `wiki-first` skills are always active; apply them before writing any code
+- The `scope-guard` and `wiki-first` rules are always active; apply them before writing any code

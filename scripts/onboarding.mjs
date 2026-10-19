@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-// Full setup: deploy workspace config, create skills junction, sync commands/agents
+// Full setup: deploy workspace config, link rules directory, sync commands/agents
 // Usage: node scripts/onboarding.mjs [--workspace <path>] [--claude-dir <path>] [--dry-run]
 // Node ≥ 20, no external dependencies
 
-import { existsSync, mkdirSync, copyFileSync, writeFileSync, symlinkSync, readdirSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { existsSync, mkdirSync, copyFileSync, writeFileSync, symlinkSync, readdirSync, lstatSync, readlinkSync, unlinkSync, rmdirSync } from 'node:fs';
+import { join, dirname, resolve } from 'node:path';
 import { homedir, platform } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { execSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 
 const SCRIPTS_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPTS_DIR, '..');
@@ -41,11 +41,12 @@ async function main() {
   const dstDotClaude = join(claudeDir, 'CLAUDE.md');
   deployFile(srcDotClaude, dstDotClaude, dryRun);
 
-  // 3. Create skills junction/symlink: ~/.claude/skills/ → <repo>/skills/
-  step('3. Linking skills directory');
-  const skillsSrc = join(REPO_ROOT, 'skills');
-  const skillsDst = join(claudeDir, 'skills');
-  linkSkills(skillsSrc, skillsDst, dryRun);
+  // 3. Link rules: ~/.claude/rules/ai-dev-tools/ → <repo>/rules/ (ADR-015)
+  step('3. Linking rules directory');
+  removeLegacySkillsLink(join(claudeDir, 'skills'), dryRun);
+  const rulesSrc = join(REPO_ROOT, 'rules');
+  const rulesDst = join(claudeDir, 'rules', 'ai-dev-tools');
+  linkRules(rulesSrc, rulesDst, dryRun);
 
   // 4. Sync commands and agents
   step('4. Syncing commands and agents');
@@ -99,27 +100,83 @@ function deployFile(src, dst, dryRun) {
   console.log(`  copied: ${dst}`);
 }
 
-function linkSkills(src, dst, dryRun) {
+// Resolved target of the link at `path`; null when `path` is something else, undefined when absent.
+// A dangling link is still a link: existsSync() would report it absent and symlinkSync() then fail.
+function linkTarget(path) {
+  let stat;
+  try {
+    stat = lstatSync(path);
+  } catch {
+    return undefined;
+  }
+  if (!stat.isSymbolicLink()) return null;
+  const target = readlinkSync(path).replace(/^\\\\\?\\/, ''); // junctions read back as \\?\C:\...
+  return resolve(dirname(path), target);
+}
+
+function removeLink(path) {
+  try {
+    unlinkSync(path);
+  } catch (err) {
+    if (err.code !== 'EPERM' && err.code !== 'EISDIR') throw err;
+    rmdirSync(path); // Windows directory junction
+  }
+}
+
+// Before ADR-015, ~/.claude/skills/ was a link to <clone>/skills/ — possibly another clone, now
+// moved or deleted. Remove a link to this clone's skills/ or to a pre-ADR-015 skills/ (it holds
+// scope-guard.md); report any other dangling link. A real directory holds the user's own skills.
+function removeLegacySkillsLink(dst, dryRun) {
+  const target = linkTarget(dst);
+  if (!target) return;
+  const legacy = target === resolve(REPO_ROOT, 'skills') || existsSync(join(target, 'scope-guard.md'));
+  if (!legacy) {
+    if (!existsSync(target)) {
+      console.log(`  warning: ${dst} is a dangling link (→ ${target}) — remove it to install Agent Skills there`);
+    }
+    return;
+  }
+  if (dryRun) {
+    console.log(`  [dry-run] would remove legacy link: ${dst}`);
+    return;
+  }
+  removeLink(dst);
+  console.log(`  removed legacy link: ${dst}`);
+}
+
+function linkRules(src, dst, dryRun) {
   if (!existsSync(src)) {
-    console.log('  skipped: skills/ directory not found in repo');
+    console.log('  skipped: rules/ directory not found in repo');
     return;
   }
 
-  if (existsSync(dst)) {
-    console.log(`  already exists: ${dst}`);
+  const current = linkTarget(dst);
+  if (current === resolve(src)) {
+    console.log(`  already linked: ${dst} → ${src}`);
     return;
+  }
+  if (current === null) {
+    // Not a link: user content we must not overwrite.
+    throw new Error(`${dst} exists and is not a link — move it away, then re-run onboarding`);
   }
 
   if (dryRun) {
+    if (current) console.log(`  [dry-run] would replace stale link: ${dst} → ${current}`);
     console.log(`  [dry-run] link ${dst} → ${src}`);
     return;
   }
 
   mkdirSync(dirname(dst), { recursive: true });
 
+  // A link to another clone (relocated, or an old checkout) — possibly dangling.
+  if (current) {
+    removeLink(dst);
+    console.log(`  replaced stale link: ${dst} → ${current}`);
+  }
+
   if (platform() === 'win32') {
     // Windows: create a directory junction
-    execSync(`mklink /J "${dst}" "${src}"`, { shell: 'cmd.exe' });
+    execFileSync('cmd.exe', ['/c', 'mklink', '/J', dst, src]);
     console.log(`  junction created: ${dst} → ${src}`);
   } else {
     symlinkSync(src, dst, 'dir');

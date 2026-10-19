@@ -1,3 +1,10 @@
+---
+paths:
+  - "**/*.cs"
+  - "**/*.csproj"
+  - "**/*.sln"
+---
+
 # dotnet-repository
 
 Repository, Handler, and Controller patterns for C# / .NET projects using Dapper.

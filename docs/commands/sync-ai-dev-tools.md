@@ -50,11 +50,11 @@ Each file processed is reported on a single line:
 
 A per-directory summary and a grand total are printed at the end.
 
-## Skills — not synced here
+## Rules — not synced here
 
-Skills (files in `skills/`) are not copied by this script. During initial setup, `onboarding.mjs` creates a junction/symlink so that `~/.claude/skills/` points directly to `ai-dev-tools/skills/`. Changes to skills are therefore available immediately without a sync step.
+Rules (files in `rules/`) are not copied by this script. During initial setup, `onboarding.mjs` creates a junction/symlink so that `~/.claude/rules/ai-dev-tools/` points directly to `ai-dev-tools/rules/` (ADR-015). Changes to rules are therefore picked up at the next session without a sync step.
 
 ## See also
 
 - [`scripts/sync-claude.mjs`](../../scripts/sync-claude.mjs) — the script this command delegates to
-- [`scripts/onboarding.mjs`](../../scripts/onboarding.mjs) — full setup including skills junction
+- [`scripts/onboarding.mjs`](../../scripts/onboarding.mjs) — full setup including the rules link
