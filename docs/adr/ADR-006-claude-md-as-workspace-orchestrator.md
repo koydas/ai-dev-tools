@@ -1,6 +1,6 @@
 # ADR-006 — CLAUDE.md as Workspace Orchestrator and Skill Router
 
-**Status:** Accepted  
+**Status:** Superseded by [ADR-015](ADR-015-conventions-as-path-scoped-rules.md) — `@` imports load unconditionally; conventions are now path-scoped rules  
 **Date:** 2026-05-23
 
 ## Context

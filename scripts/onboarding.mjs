@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-// Full setup: deploy workspace config, create skills junction, sync commands/agents
+// Full setup: deploy workspace config, link rules directory, sync commands/agents
 // Usage: node scripts/onboarding.mjs [--workspace <path>] [--claude-dir <path>] [--dry-run]
 // Node ≥ 20, no external dependencies
 
-import { existsSync, mkdirSync, copyFileSync, writeFileSync, symlinkSync, readdirSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { existsSync, mkdirSync, copyFileSync, writeFileSync, symlinkSync, readdirSync, lstatSync, readlinkSync, unlinkSync } from 'node:fs';
+import { join, dirname, resolve } from 'node:path';
 import { homedir, platform } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { execSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 
 const SCRIPTS_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPTS_DIR, '..');
@@ -41,11 +41,12 @@ async function main() {
   const dstDotClaude = join(claudeDir, 'CLAUDE.md');
   deployFile(srcDotClaude, dstDotClaude, dryRun);
 
-  // 3. Create skills junction/symlink: ~/.claude/skills/ → <repo>/skills/
-  step('3. Linking skills directory');
-  const skillsSrc = join(REPO_ROOT, 'skills');
-  const skillsDst = join(claudeDir, 'skills');
-  linkSkills(skillsSrc, skillsDst, dryRun);
+  // 3. Link rules: ~/.claude/rules/ai-dev-tools/ → <repo>/rules/ (ADR-015)
+  step('3. Linking rules directory');
+  removeLegacySkillsLink(join(claudeDir, 'skills'), dryRun);
+  const rulesSrc = join(REPO_ROOT, 'rules');
+  const rulesDst = join(claudeDir, 'rules', 'ai-dev-tools');
+  linkRules(rulesSrc, rulesDst, dryRun);
 
   // 4. Sync commands and agents
   step('4. Syncing commands and agents');
@@ -99,9 +100,29 @@ function deployFile(src, dst, dryRun) {
   console.log(`  copied: ${dst}`);
 }
 
-function linkSkills(src, dst, dryRun) {
+// Before ADR-015, ~/.claude/skills/ was a link to <repo>/skills/ — a directory that no longer
+// exists. Remove that link only; a real ~/.claude/skills/ directory holds the user's own skills.
+function removeLegacySkillsLink(dst, dryRun) {
+  let stat;
+  try {
+    stat = lstatSync(dst);
+  } catch {
+    return;
+  }
+  if (!stat.isSymbolicLink()) return;
+  const target = readlinkSync(dst).replace(/^\\\\\?\\/, ''); // junctions read back as \\?\C:\...
+  if (resolve(dirname(dst), target) !== resolve(REPO_ROOT, 'skills')) return;
+  if (dryRun) {
+    console.log(`  [dry-run] would remove legacy link: ${dst}`);
+    return;
+  }
+  unlinkSync(dst);
+  console.log(`  removed legacy link: ${dst}`);
+}
+
+function linkRules(src, dst, dryRun) {
   if (!existsSync(src)) {
-    console.log('  skipped: skills/ directory not found in repo');
+    console.log('  skipped: rules/ directory not found in repo');
     return;
   }
 
@@ -119,7 +140,7 @@ function linkSkills(src, dst, dryRun) {
 
   if (platform() === 'win32') {
     // Windows: create a directory junction
-    execSync(`mklink /J "${dst}" "${src}"`, { shell: 'cmd.exe' });
+    execFileSync('cmd.exe', ['/c', 'mklink', '/J', dst, src]);
     console.log(`  junction created: ${dst} → ${src}`);
   } else {
     symlinkSync(src, dst, 'dir');

@@ -41,4 +41,4 @@ For each repo with unreleased commits, you can:
 ## See also
 
 - [`scripts/check-releases.mjs`](../../scripts/check-releases.mjs) — the script this command delegates to
-- [`skills/git-conventions.md`](../../skills/git-conventions.md) — tagging conventions
+- [`rules/git-conventions.md`](../../rules/git-conventions.md) — tagging conventions

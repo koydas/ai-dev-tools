@@ -1,13 +1,13 @@
 # ai-dev-tools
 
-A Claude Code toolbox for AI-native development — commands, agents, skills, and scripts that compress the full SDLC into interactive, human-gated pipelines.
+A Claude Code toolbox for AI-native development — commands, agents, rules, and scripts that compress the full SDLC into interactive, human-gated pipelines.
 
 ## Directory map
 
 ```
 agents/     Specialized subagents — one responsibility, explicit I/O, chainable
 commands/   Slash commands — pipeline definitions only, no logic
-skills/     Stack conventions — loaded automatically via CLAUDE.md routing
+rules/      Stack conventions — Claude Code rules, path-scoped via `paths:` frontmatter
 scripts/    External I/O — GitHub API, file ops (ESM .mjs, Node ≥ 20)
 configs/    Versioned non-secret configuration (git.yaml, …)
 prompts/    Standalone prompt templates for manual use
@@ -23,7 +23,7 @@ Three primitives implement the **human as gate** model ([ADR-001](docs/adr/ADR-0
 
 | Primitive | Role | Rule |
 |---|---|---|
-| **Skills** | Passive context | Loaded via `CLAUDE.md` routing. Encode conventions, not logic. |
+| **Rules** | Passive context | Claude Code rules (`~/.claude/rules/`), loaded every session or on matching paths ([ADR-015](docs/adr/ADR-015-conventions-as-path-scoped-rules.md)). Encode conventions, not logic. |
 | **Agents** | Execution units | One responsibility. Explicit Input / Output contract. Chainable. |
 | **Commands** | Orchestrators | Chain agents and invoke scripts. Must not implement logic ([ADR-005](docs/adr/ADR-005-commands-delegate-logic.md)). |
 
@@ -62,9 +62,11 @@ Create `commands/your-command.md` with:
 
 Also create `docs/commands/your-command.md` with purpose, invocation, and output format.
 
-### Skill
+### Rule
 
-Create `skills/your-skill.md` as a convention guide (Markdown only). Add a file-path routing rule to `workspace/CLAUDE.md` so the skill is injected when relevant files are touched ([ADR-006](docs/adr/ADR-006-claude-md-as-workspace-orchestrator.md)).
+Create `rules/your-rule.md` as a convention guide (Markdown only). Scope it with `paths:` frontmatter (glob list) when it only matters for some files; without it the rule loads every session. `paths` is the only frontmatter field Claude Code reads, and invalid YAML silently makes the rule unconditional — `tests/rules.test.mjs` checks both ([ADR-015](docs/adr/ADR-015-conventions-as-path-scoped-rules.md)). Add it to the table in `workspace/CLAUDE.md`.
+
+Not to be confused with an Agent Skill (`<name>/SKILL.md` with `name` + `description`, loaded on demand by the model): this repo ships none.
 
 ### Script
 
@@ -101,7 +103,7 @@ node --test
 - **Scripts — GitHub API**: always pass `--paginate` to `gh api` to avoid silently losing data past the first page
 - **Scripts — GraphQL fallback**: a script that uses GraphQL (incl. `gh pr view` / `gh repo view`) falls back to REST when it fails — pure, tested REST→shape mappers; a field REST cannot provide is `null` (unknown), never a default; output carries `source` ([ADR-011](docs/adr/ADR-011-graphql-rest-fallback.md), shared helpers in `scripts/gh-transport.mjs`)
 - **Scripts — structure**: export the main functions AND provide a CLI entrypoint (`if process.argv[1] === fileURLToPath(import.meta.url)`)
-- **Agents / Commands / Skills**: Markdown only — no code
+- **Agents / Commands / Rules**: Markdown only — no code
 - **Agents / Commands — frontmatter**: agents carry `name` + `description`, commands `description` (+ `argument-hint`); without it an agent is not a registered subagent
 - **Agents / Commands — script paths**: always `node "${CLAUDE_PLUGIN_ROOT}/scripts/<name>.mjs"`, never `node scripts/…` — commands run from the consuming repo's working directory ([ADR-013](docs/adr/ADR-013-plugin-distribution-and-script-paths.md)); `tests/sync-claude.test.mjs` enforces it
 - **Plugin version**: bump `version` in `.claude-plugin/plugin.json` when a change to `commands/`, `agents/` or `scripts/` must reach plugin installs
@@ -112,11 +114,11 @@ node --test
 
 | File | Purpose |
 |---|---|
-| `README.md` | Full reference — commands, agents, skills, scripts, setup |
+| `README.md` | Full reference — commands, agents, rules, scripts, setup |
 | `CONTRIBUTING.md` | Architectural rules for adding agents and commands |
 | `docs/adr/` | All architecture decisions with rationale |
 | `docs/commands/` | Reference documentation for each slash command |
 
 ## Auto-sync
 
-After creating or modifying any file in `agents/`, `commands/`, `skills/`, or `prompts/`, automatically run `/sync-ai-dev-tools` to deploy the changes to `~/.claude`.
+After creating or modifying any file in `agents/`, `commands/`, or `prompts/`, automatically run `/sync-ai-dev-tools` to deploy the changes to `~/.claude`. `rules/` is linked, not synced.

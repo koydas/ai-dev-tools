@@ -1,3 +1,9 @@
+---
+paths:
+  - "**/*.vue"
+  - "**/src/{components,views,stores}/**/*.{ts,js}"
+---
+
 # vue-ui
 
 Component structure, store integration, and i18n conventions for Vue 3 projects.

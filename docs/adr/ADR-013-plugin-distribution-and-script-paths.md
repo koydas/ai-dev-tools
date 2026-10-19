@@ -23,7 +23,7 @@ Distribution was a copy (`sync-claude.mjs` → `~/.claude`) plus a skills symlin
 3. **Cloud sessions use the copy mode.** A cloud session does not install plugins declared by a repository. The cloud environment's setup script clones this repo and runs `sync-claude.mjs` (README, *Use from another repository*); the setup script runs before Claude Code starts, so the copied commands and agents are discovered.
 4. **Every agent and command carries frontmatter** — agents `name` + `description`, commands `description` (+ `argument-hint`).
 
-Skills stay flat Markdown imported by the workspace `CLAUDE.md` (ADR-006); the plugin does not ship them.
+Skills stay flat Markdown imported by the workspace `CLAUDE.md` (ADR-006); the plugin does not ship them. *(Amended by [ADR-015](ADR-015-conventions-as-path-scoped-rules.md): they are now rules linked into `~/.claude/rules/`.)*
 
 ## Alternatives considered
 

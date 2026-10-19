@@ -1,6 +1,6 @@
 # ADR-002 — Three-Primitive Architecture: Skills, Agents, Commands
 
-**Status:** Accepted  
+**Status:** Accepted — amended by [ADR-015](ADR-015-conventions-as-path-scoped-rules.md): the Skill primitive is now a Rule (`rules/`)  
 **Date:** 2026-05-23
 
 ## Context

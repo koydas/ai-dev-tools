@@ -31,7 +31,7 @@ Full setup: [Setup](#setup).
 
 ## How it works
 
-The human is a **gate**, not a relay. Commands orchestrate agents; agents do one thing well; skills shape how they reason.
+The human is a **gate**, not a relay. Commands orchestrate agents; agents do one thing well; rules shape how they reason.
 
 ```mermaid
 flowchart LR
@@ -72,11 +72,11 @@ body:   As a DevOps engineer, I want requests capped per client key...
 Review report → ~/dev/pr-reviews/42-rate-limiting.md
 ```
 
-### Skills / Agents / Commands
+### Rules / Agents / Commands
 
 | Primitive | Role | How it works |
 |---|---|---|
-| **Skills** | Passive context | Conventions, patterns, rules loaded automatically via `CLAUDE.md`. Shape *how* the agent reasons without being called explicitly. |
+| **Rules** | Passive context | Conventions and patterns as Claude Code rules — loaded every session or when matching files are touched (`paths:` frontmatter, ADR-015). Shape *how* the agent reasons without being called explicitly. |
 | **Agents** | Execution units | Discrete, specialized, explicit I/O contracts. Do one thing well. Chainable via structured `### Status / ### Handoff` blocks. |
 | **Commands** | Orchestrators | Chain agents, invoke scripts, manage workflow state. Type `/name` in Claude Code to trigger a full pipeline. |
 
@@ -131,25 +131,25 @@ Next step and what to pass forward
 | `doc-builder` | Repo/branch context | Documentation |
 | `impact-analyst` | Proposed change | Cross-repo blast radius analysis |
 
-### Skills
+### Rules
 
-| Skill | Loaded when | What it enforces |
+| Rule | Loaded when | What it enforces |
 |---|---|---|
 | `scope-guard.md` | Always | Changes stay inside the authorized file perimeter |
 | `wiki-first.md` | Always | Wiki/docs lookup before any business logic implementation |
-| `git-conventions.md` | Any git op | Commit format, branching strategy, merge rules |
-| `branch-pr.md` | Any git op | Branch, commit, and PR naming conventions |
-| `dotnet-repository.md` | C# work | Repository/Handler/Controller patterns (Dapper) |
-| `vue-ui.md` | Vue work | Component structure, store, i18n |
-| `vue-service.md` | Vue work | Vuex service and store conventions |
+| `git-conventions.md` | Always | Commit format, branching strategy, merge rules |
+| `branch-pr.md` | Always | Branch, commit, and PR naming conventions |
+| `dotnet-repository.md` | `*.cs`, `*.csproj`, `*.sln` | Repository/Handler/Controller patterns (Dapper) |
+| `vue-ui.md` | `*.vue`, `src/{components,views,stores}/**` | Component structure, store, i18n |
+| `vue-service.md` | `*.vue`, `src/{services,stores}/**` | Vuex service and store conventions |
 
-> Skills are loaded by the global `CLAUDE.md` at workspace root, which acts as a navigation orchestrator — it routes to per-repo `CLAUDE.md` files and injects the relevant skills based on file paths being touched.
+> Rules are [Claude Code rules](https://code.claude.com/docs/en/memory#organize-rules-with-claude/rules/), linked at `~/.claude/rules/ai-dev-tools/` by onboarding. Rules without `paths:` load every session; path-scoped ones load when Claude reads or edits a matching file (ADR-015). They are not Agent Skills (`<name>/SKILL.md`, loaded on demand by the model).
 
 ### Scripts
 
 | Script | What it does | Usage |
 |---|---|---|
-| `onboarding.mjs` | Full setup — copy workspace config, create skills junction, deploy commands and agents | CLI |
+| `onboarding.mjs` | Full setup — copy workspace config, link the rules directory, deploy commands and agents | CLI |
 | `sync-claude.mjs` | Incremental sync from `ai-dev-tools` → `~/.claude` (reports new/updated/extra) | CLI / via `/sync-ai-dev-tools` |
 | `gh-get-issue.mjs` | Fetch GitHub issue by number → JSON — GraphQL, else REST (`source` in output, ADR-011) | CLI / via commands |
 | `gh-get-pr.mjs` | Fetch PR by number, `owner/repo#n`, URL or source branch — GraphQL, else REST (`source` in output, ADR-011) | CLI / via commands |
@@ -176,7 +176,7 @@ Next step and what to pass forward
 ai-dev-tools/
 ├── agents/       Specialized subagents — explicit I/O contracts, chainable
 ├── commands/     Slash commands — type /name in Claude Code to invoke a pipeline
-├── skills/       Stack conventions — loaded automatically via CLAUDE.md
+├── rules/        Stack conventions — Claude Code rules, path-scoped
 ├── scripts/      GitHub CLI, token auditing, sync utilities
 ├── prompts/      Standalone prompt templates for manual use
 ├── docs/
@@ -239,7 +239,7 @@ git clone --depth 1 https://github.com/koydas/ai-dev-tools "$HOME/ai-dev-tools" 
 node ~/dev/ai-dev-tools/scripts/sync-claude.mjs
 ```
 
-> **Windows?** All scripts target PowerShell-compatible paths. The onboarding script creates a junction for `skills/` rather than a symlink.
+> **Windows?** All scripts target PowerShell-compatible paths. The onboarding script creates a junction for `rules/` rather than a symlink.
 
 ---
 

@@ -1,3 +1,9 @@
+---
+paths:
+  - "**/*.vue"
+  - "**/src/{services,stores}/**/*.{ts,js}"
+---
+
 # vue-service
 
 Service layer and Pinia store conventions for Vue 3 projects.
