@@ -29,10 +29,25 @@ The plugin still does not ship conventions: a plugin carries skills, not rules.
 - Native mechanism: no routing prose for the model to interpret, visible in `/memory`.
 - No name clash with Agent Skills; `~/.claude/skills/` is free for real skills.
 
-**Negative**
-- Rules load on file access, not on task intent: a rule reaches the context only after the first matching Read/Edit, not while planning.
-- Machines onboarded before this ADR must re-run `onboarding.mjs` (the old workspace `CLAUDE.md` imports now-missing files).
-- Cowork desktop sessions skip a symlinked rules directory pointing outside the working directory.
+**Negative** — detailed in *What we lose* below.
+
+## What we lose
+
+Accepted losses. Each names what triggers it and what, if anything, compensates.
+
+| # | Loss | When it bites | Mitigation |
+|---|---|---|---|
+| 1 | **No convention while planning.** A path-scoped rule enters the context on the first Read/Write/Edit of a matching file (or a single-file `cat`/`head`), not when the task is read. | An implementation brief is drafted for a `.cs` change before any `.cs` file is opened: `dotnet-repository` is absent from the plan. | Agents read the target files before proposing a patch. None in the mechanism itself. |
+| 2 | **Files never opened by a tool trigger nothing.** A file created or rewritten by a Bash command that is not a read (`sed -i`, a generator, `dotnet new`) does not load the rule. | Scaffolding through the CLI. | Read the generated file before editing it. |
+| 3 | **No intent-based scoping.** `paths` matches files, not activities. ADR-006's "any git operation" trigger has no equivalent. | `git-conventions` and `branch-pr` load in every session, including ones that never touch git — the same cost as before, now explicit. | Keep them short. Moving them to Agent Skills (on-demand by `description`) is the option if their size grows. |
+| 4 | **Glob false positives.** Patterns match layout, not stack: `src/services/**/*.ts` exists in a Node backend too. | `vue-service` loads in a non-Vue repo with that layout. | Patterns are tightened when a misfire is seen; `*.vue` stays the primary signal. |
+| 5 | **Not shipped by the plugin.** A plugin carries skills, not rules (ADR-013). Plugin installs and cloud sessions — whose setup script runs `sync-claude.mjs`, not `onboarding.mjs` — get no conventions. | `/ai-dev-tools:pr-review` in a consuming repo, any claude.ai/code session. | Cloud setup script can add the link (`ln -s "$HOME/ai-dev-tools/rules" ~/.claude/rules/ai-dev-tools`). Not automated here. |
+| 6 | **Cowork desktop sessions skip them.** Cowork ignores a symlinked `~/.claude/rules/` entry pointing outside the working directory. | Any Cowork desktop session. | None short of copying the files instead of linking them. |
+| 7 | **Breaking migration.** The workspace `CLAUDE.md` deployed before this ADR imports `~/.claude/skills/*.md`, which no longer resolve. | Every machine onboarded before this ADR, until it re-runs onboarding. | Re-run `node scripts/onboarding.mjs`: it redeploys the workspace `CLAUDE.md`, removes the legacy link, creates the new one. |
+| 8 | **Windows junction cleanup unverified.** The legacy-link check strips the `\\?\` prefix `readlinkSync` returns for junctions; not exercised on Windows. | Onboarding re-run on Windows. | If the legacy junction survives, it is dangling and harmless; delete `%USERPROFILE%\.claude\skills` by hand. |
+| 9 | **Vocabulary change.** "Skill" disappears from this repo's primitives (ADR-002); notes, links or habits that say `skills/` go stale. | External docs, bookmarks to `skills/*.md`. | None; `tests/rules.test.mjs` prevents a flat `skills/` from reappearing. |
+
+What is **not** lost: deterministic loading. Rules without `paths` load every session exactly as the imports did, and path-scoped rules load without relying on the model's judgement — the property that ruled out Agent Skills for `scope-guard`.
 
 ## Alternatives considered
 

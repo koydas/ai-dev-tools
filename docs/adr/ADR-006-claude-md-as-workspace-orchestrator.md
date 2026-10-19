@@ -30,6 +30,10 @@ Skills are stored in `skills/` and symlinked (or junctioned on Windows) into `~/
 - File-path-based routing is heuristic; it may misfire if conventions are inconsistently applied
 - The workspace `CLAUDE.md` becomes a critical dependency; misconfiguration silently disables skills
 
+## Outcome (2026-10-19)
+
+The conditional injection was never effective: `@` imports load at launch regardless of the heading above them, so every skill loaded in every session. ADR-015 replaces the mechanism with path-scoped rules. Two goals of this ADR are not carried over — injection by *activity* ("git operations") and injection before any file is opened; see ADR-015, *What we lose* (#1, #3).
+
 ## Alternatives considered
 
 - **Load all skills always** — simpler routing but bloated context; irrelevant rules may conflict
