@@ -8,7 +8,7 @@ A Claude Code toolbox for AI-native development — commands, agents, rules, and
 agents/     Specialized subagents — one responsibility, explicit I/O, chainable
 commands/   Slash commands — pipeline definitions only, no logic
 rules/      Stack conventions — Claude Code rules, path-scoped via `paths:` frontmatter
-scripts/    External I/O — GitHub API, file ops (ESM .mjs, Node ≥ 20)
+scripts/    External I/O — GitHub API, file ops (ESM .mjs, Node ≥ 20); mcp-server.mjs exposes them over MCP
 configs/    Versioned non-secret configuration (git.yaml, …)
 prompts/    Standalone prompt templates for manual use
 tests/      Node unit tests (node --test), zero external dependencies
@@ -61,6 +61,10 @@ Create `commands/your-command.md` with:
 - No logic in commands — delegate everything to agents or scripts
 
 Also create `docs/commands/your-command.md` with purpose, invocation, and output format.
+
+### MCP tool
+
+A script whose I/O should be callable from other MCP hosts gets an entry in `scripts/mcp-tools.mjs`: JSON Schema, annotations, pure `args()` validating the input (no value starting with `-`, free text through `stdin`). Read-only by default; a write tool needs `write: true` and a confirmation path ([ADR-016](docs/adr/ADR-016-mcp-server.md)). `tests/mcp-tools.test.mjs` checks the registry.
 
 ### Rule
 
