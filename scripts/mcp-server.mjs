@@ -93,6 +93,9 @@ export function runScript({ script, args, stdin }, root = ROOT) {
     let stdout = '';
     let stderr = '';
     const timer = setTimeout(() => child.kill(), RUN_TIMEOUT_MS);
+    // Decoded as a stream: a multi-byte character split across two chunks stays intact.
+    child.stdout.setEncoding('utf8');
+    child.stderr.setEncoding('utf8');
     child.stdout.on('data', (d) => { if (stdout.length < MAX_OUTPUT) stdout += d; });
     child.stderr.on('data', (d) => { if (stderr.length < MAX_OUTPUT) stderr += d; });
     child.on('error', (err) => { clearTimeout(timer); resolve({ code: 1, stdout, stderr: err.message }); });

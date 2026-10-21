@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { createServer, parseFrontmatter, listPrompts, getPrompt, listResources, readResource } from '../scripts/mcp-server.mjs';
+import { createServer, runScript, parseFrontmatter, listPrompts, getPrompt, listResources, readResource } from '../scripts/mcp-server.mjs';
 import { TOOLS } from '../scripts/mcp-tools.mjs';
 
 const SERVER = fileURLToPath(new URL('../scripts/mcp-server.mjs', import.meta.url));
@@ -192,4 +192,12 @@ test('stdio: initialize → tools/list → normalize_pr → parse error → clea
   assert.equal(normalized.headRefOid, 'a'.repeat(40));
   assert.equal(normalized.repository, 'o/r');
   assert.equal(messages.find((m) => m.id === null).error.code, -32700);
+});
+
+test('runScript: multi-byte characters split across pipe chunks survive', async () => {
+  const pr = { number: 5, title: '€'.repeat(100_000), head: { sha: 'a'.repeat(40) } };
+  const { code, stdout } = await runScript({ script: 'normalize-pr.mjs', args: [], stdin: JSON.stringify(pr) }, ROOT);
+  assert.equal(code, 0);
+  assert.equal(JSON.parse(stdout).title, pr.title);
+  assert.ok(!stdout.includes('\uFFFD'));
 });
