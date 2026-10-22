@@ -5,9 +5,10 @@
 // Transport: `gh issue list` (GraphQL) first, REST when it fails (ADR-011).
 
 import { fileURLToPath } from 'node:url';
-import { gh, restList, withGraphqlFallback, resolveRepo } from './gh-transport.mjs';
+import { gh, restList, withGraphqlFallback, resolveRepo, exitOnUnknownFlag } from './gh-transport.mjs';
 import { mapRestIssue } from './gh-get-issue.mjs';
 
+const USAGE = 'Usage: node scripts/gh-my-issues.mjs [--repo <owner/repo>] [--state open|closed|all] [--limit <n>] [--json]';
 const FIELDS = 'number,title,state,labels,assignees,author,url,createdAt,updatedAt';
 
 // Pure: REST `issues` list → the `gh issue list --json FIELDS` shape. The issues endpoint also
@@ -47,6 +48,7 @@ function formatIssues(issues) {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
+  exitOnUnknownFlag(args, { value: ['--repo', '--state', '--limit'], bool: ['--json'] }, USAGE);
   const repoIdx = args.indexOf('--repo');
   const stateIdx = args.indexOf('--state');
   const limitIdx = args.indexOf('--limit');

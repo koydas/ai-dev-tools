@@ -6,8 +6,9 @@
 // says which (`graphql` | `rest`).
 
 import { fileURLToPath } from 'node:url';
-import { gh, restList, withGraphqlFallback, resolveRepo } from './gh-transport.mjs';
+import { gh, restList, withGraphqlFallback, resolveRepo, exitOnUnknownFlag } from './gh-transport.mjs';
 
+const USAGE = 'Usage: node scripts/gh-get-issue.mjs <issue-number> [--repo <owner/repo>]';
 const FIELDS = 'number,title,body,state,labels,assignees,author,comments,url,createdAt,updatedAt';
 
 // Pure: REST `issues/{n}` object (+ its comments) → the `gh issue view --json FIELDS` shape.
@@ -50,12 +51,13 @@ export function getIssue(number, repo) {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
+  exitOnUnknownFlag(args, { value: ['--repo'] }, USAGE);
   const number = args.find(a => /^\d+$/.test(a));
   const repoIdx = args.indexOf('--repo');
   const repo = repoIdx !== -1 ? args[repoIdx + 1] : undefined;
 
   if (!number) {
-    console.error('Usage: node scripts/gh-get-issue.mjs <issue-number> [--repo <owner/repo>]');
+    console.error(USAGE);
     process.exit(1);
   }
 

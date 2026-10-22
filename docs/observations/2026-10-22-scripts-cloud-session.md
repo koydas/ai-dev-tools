@@ -45,6 +45,35 @@
 
 - Real GraphQL path (blocked here), `gh-post-comment` and MCP `post_comment` success/confirmation path (write), `update-repos`, `check-releases` on real repos, pagination on PRs with >100 comments/threads.
 
+## Suites — lot A (branche `claude/ai-dev-tools-transport-and-args`)
+
+Mesures du 2026-10-22, même session cloud, harnais `spawnSync` (temps mur, 5 runs par cas, médiane). Indicatif : un seul environnement, pas de statistique.
+
+- **O1 — corrigé.** `shouldSkipGraphql(env)` (pure, `scripts/gh-transport.mjs`) est vraie quand `CLAUDE_CODE_REMOTE` est non vide et différent de `0` / `false`; `withGraphqlFallback` appelle alors `rest()` directement (aucun appel GraphQL, aucune ligne `GraphQL unavailable`), et `resolveRepo` saute `gh repo view`. `AI_DEV_TOOLS_FORCE_GRAPHQL=1` restaure l'ancien chemin. `source` inchangé (`rest` / `rest+ccr`).
+
+  | Script | Avant (médiane) | Après (médiane) | Gain |
+  |---|---|---|---|
+  | `gh-get-pr 1 --repo koydas/ai-dev-tools` | 1 786 ms | 1 438 ms | −348 ms |
+  | `gh-get-issue 1` | 1 442 ms | 867 ms | −575 ms |
+  | `gh-get-pr-threads 1` | 2 801 ms | 2 143 ms | −658 ms |
+  | `gh-get-pr-feedback 1` | 2 841 ms | 2 121 ms | −720 ms |
+
+  Avant : 1 ligne `GraphQL unavailable` par appel; après : 0. Hypothèses : `CLAUDE_CODE_REMOTE=true` observée dans cette session seulement (variable posée par Claude Code web; non vérifiée qu'elle l'est dans toutes les sessions cloud ni absente d'un terminal local); « GraphQL refusé dans toute session cloud » repose sur ADR-011 et cette seule session. Si l'hypothèse est fausse pour un environnement, `AI_DEV_TOOLS_FORCE_GRAPHQL=1` suffit. Premier run de `gh-get-pr` (2 290 ms) plus lent que les suivants : démarrage à froid.
+- **O2 — non corrigé, sans objet.** Aucun script ne s'appuie sur `gh auth status`.
+- **O3 — corrigé pour 5 scripts.** Inventaire par exécution de `--bogus` (avec un argument positionnel valide) :
+
+  | Script | Avant |
+  |---|---|
+  | `gh-get-pr` | ignoré (lookup de la branche courante) |
+  | `gh-get-issue`, `gh-get-pr-threads`, `gh-get-pr-feedback` | ignoré (sortie JSON normale, exit 0) |
+  | `gh-my-issues` | ignoré (`No issues found.`, exit 0) |
+  | `gh-get-check-runs` | déjà correct (Usage, exit 1) |
+  | `gh-post-comment` | **lu, non exécuté** (écriture) : `--bogus` en 2ᵉ positionnel serait posté comme corps du commentaire. Non modifié : chemin d'écriture (R6, hors périmètre) et un corps légitime peut commencer par `-`. |
+
+  Désormais : `Error: unknown option <flag>` + ligne Usage sur stderr, exit 1, avant tout appel réseau (`findUnknownFlag` / `exitOnUnknownFlag`, partagés dans `gh-transport.mjs`). Un test CLI par script.
+- **O4 — corrigé.** `checkpoint.mjs` : `Error <message>` + Usage, exit 1, plus de stack trace; exports inchangés. `tests/checkpoint.test.mjs` (step invalide, issueId invalide, traversal sur issueId et repo).
+- **O5 / O6 / O7** : lot B (O5, O6) ou hors périmètre (O7).
+
 ## Reproduce
 
 Harness: spawn `node scripts/<name>.mjs` with `spawnSync`, record `status`, wall time, first bytes of stdout/stderr. Not committed (scratch).
