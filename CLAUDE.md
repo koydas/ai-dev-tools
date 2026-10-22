@@ -123,6 +123,7 @@ node --test
 | `docs/adr/` | All architecture decisions with rationale |
 | `docs/commands/` | Reference documentation for each slash command |
 | `docs/mcp-server.md` | MCP server reference — setup, tools, prompts, resources, security model |
+| `docs/consumer-repos.md` | How other repos adopt the plugin and keep their own skills (ADR-018) |
 
 ## Auto-sync
 

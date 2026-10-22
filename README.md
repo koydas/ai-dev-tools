@@ -287,6 +287,8 @@ git clone --depth 1 https://github.com/koydas/ai-dev-tools "$HOME/ai-dev-tools" 
 
 `sync-claude.mjs` writes the absolute clone path in place of `${CLAUDE_PLUGIN_ROOT}` in the copies under `~/.claude`.
 
+Per-repo skills, layering rules and the list of adopting repos: [`docs/consumer-repos.md`](docs/consumer-repos.md) ([ADR-018](docs/adr/ADR-018-consumer-repo-adoption.md)).
+
 ### Use from another MCP host
 
 `scripts/mcp-server.mjs` exposes the toolbox over MCP ([ADR-016](docs/adr/ADR-016-mcp-server.md)): stdio, zero dependency, needs `gh` authenticated where the host starts it. Full reference — tools and arguments, prompts, resources, security model, troubleshooting — in [`docs/mcp-server.md`](docs/mcp-server.md).
