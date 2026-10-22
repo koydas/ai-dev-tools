@@ -143,7 +143,8 @@ test('CLI: builds from the committed sidecars; bad flag → Error + Usage, exit 
   try {
     const ok = spawnSync(process.execPath, [SCRIPT, '--out', out], { encoding: 'utf8' });
     assert.equal(ok.status, 0, ok.stderr);
-    assert.match(readFileSync(join(out, 'index.html'), 'utf8'), /160 \/ 160/);
+    const { tests } = loadLatestSet(REAL_DIR);
+    assert.ok(readFileSync(join(out, 'index.html'), 'utf8').includes(`${tests.passed} / ${tests.total}`));
     const bad = spawnSync(process.execPath, [SCRIPT, '--bogus'], { encoding: 'utf8' });
     assert.equal(bad.status, 1);
     assert.match(bad.stderr, /^Error: unknown option --bogus\nUsage: /);
