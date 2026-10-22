@@ -2,6 +2,7 @@
 // Build the tool-health dashboard (ADR-019) → static HTML in --out: index.html, observations.html, evals.html
 // Usage: node scripts/build-dashboard.mjs [--observations <dir>] [--out <dir>]
 // Input: docs/observations/*.json sidecars (schema_version 1); the newest by `date` feeds the pages.
+// Optional `review_chain` key: the `aggregate` of scripts/review-chain-metrics.mjs, shown as observational figures (not evals).
 // Every string from the sidecars is escaped; no script, no external asset. Node ≥ 20, no external dependencies
 
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -28,6 +29,18 @@ export const EVIDENCE = [
   { key: 'NOT_RUN', tone: 'neutral', text: 'Check exists but was not executed in this session.' },
   { key: 'PRE_EXISTING', tone: 'warn', text: 'Already failing on the base branch (not caused by the change).' },
 ];
+
+// Review-chain figures (aggregate of scripts/review-chain-metrics.mjs). Proxies from PR history, not eval scores.
+export const REVIEW_CHAIN = [
+  { key: 'blocking_touched_rate', kind: 'rate', label: 'Blocking findings touched', text: 'Share of blocking findings whose cited file a later commit changed. A proxy for fixed, not proof.' },
+  { key: 'non_blocking_touched_rate', kind: 'rate', label: 'Non-blocking findings touched', text: 'Same measure for non-blocking findings and nits.' },
+  { key: 'converged_rate', kind: 'rate', label: 'Converged', text: 'Share of reviewed PRs whose last report is DONE.' },
+  { key: 'mean_rounds', kind: 'number', label: 'Reports per reviewed PR', text: 'Review rounds before the PR ended.' },
+  { key: 'human_threads_beyond_review', kind: 'count', label: 'Human threads beyond the review', text: 'Threads from trusted humans, after the first report, on files no report cited. A proxy for what the review missed.' },
+];
+
+// Below this many reviewed PRs the page says a rate cannot be read. A display threshold, not a statistical bound.
+export const SMALL_SAMPLE = 10;
 
 const OVERVIEW_ITEMS = 4;
 
@@ -77,7 +90,28 @@ export function validateObservationSet(data, name = 'observations') {
     if (!Object.hasOwn(STATUS, o.status)) fail(`${p}.status`, `must be one of ${Object.keys(STATUS).join(', ')}`);
     if (!ISO_DATE.test(String(o.date))) fail(`${p}.date`, 'must be YYYY-MM-DD');
   });
+  if (data.review_chain !== undefined) validateReviewChain(data.review_chain, fail);
   return data;
+}
+
+const isRatio = (v) => v === null || (typeof v === 'number' && v >= 0 && v <= 1);
+
+// Pure: the optional `review_chain` key. Rates are null (unknown) or in [0, 1]; counts are integers.
+function validateReviewChain(rc, fail) {
+  if (rc === null || typeof rc !== 'object' || Array.isArray(rc)) fail('review_chain', 'must be an object');
+  if (!ISO_DATE.test(String(rc.generated))) fail('review_chain.generated', 'must be YYYY-MM-DD');
+  if (rc.scope !== undefined && !isStr(rc.scope)) fail('review_chain.scope', 'must be a non-empty string');
+  const a = rc.aggregate;
+  if (a === null || typeof a !== 'object' || Array.isArray(a)) fail('review_chain.aggregate', 'must be an object');
+  for (const key of ['prs', 'reviewed', 'reports', 'human_threads_after_review', 'human_threads_beyond_review']) {
+    if (!isCount(a[key])) fail(`review_chain.aggregate.${key}`, 'must be a non-negative integer');
+  }
+  if (a.reviewed > a.prs) fail('review_chain.aggregate.reviewed', 'must not exceed prs');
+  if (a.human_threads_beyond_review > a.human_threads_after_review) fail('review_chain.aggregate.human_threads_beyond_review', 'must not exceed human_threads_after_review');
+  for (const key of ['blocking_touched_rate', 'non_blocking_touched_rate', 'converged_rate']) {
+    if (!isRatio(a[key])) fail(`review_chain.aggregate.${key}`, 'must be null or a number between 0 and 1');
+  }
+  if (!(a.mean_rounds === null || (typeof a.mean_rounds === 'number' && a.mean_rounds >= 0))) fail('review_chain.aggregate.mean_rounds', 'must be null or a non-negative number');
 }
 
 /** Newest set by `date` (ties: last file name), or null when the directory holds none. */
@@ -112,6 +146,7 @@ export function summarize(set) {
     all: [...obs].sort(byRank),
     evidence: set.review_evidence ?? null,
     source: set.source ?? null,
+    reviewChain: set.review_chain ?? null,
   };
 }
 
@@ -152,7 +187,7 @@ ul.legend li { justify-content: flex-start; } .legend .pill { min-width: 128px; 
 table { width: 100%; border-collapse: collapse; } td:last-child { white-space: nowrap; } th, td { text-align: left; padding: 10px 8px; border-top: 1px solid var(--border); vertical-align: top; } th { color: var(--muted); font-weight: 500; font-size: 13px; border-top: 0; }
 .tabbar { display: none; }
 @media (max-width: 760px) {
-  .bar nav { display: none; } .bar { min-height: 56px; } th:last-child, td:last-child { display: none; }
+  .bar nav { display: none; } .bar { min-height: 56px; } th:last-child, td:last-child { display: none; } .kv th:last-child, .kv td:last-child { display: table-cell; }
   .tabbar { display: grid; grid-template-columns: repeat(3, 1fr); position: fixed; bottom: 0; left: 0; right: 0; z-index: 25; background: var(--surface); border-top: 1px solid var(--border); padding: 4px 4px calc(4px + env(safe-area-inset-bottom)); }
   .tabbar a { display: grid; justify-items: center; gap: 2px; padding: 6px 2px; min-height: 44px; font-size: 11px; font-weight: 600; color: var(--muted); text-decoration: none; }
   .tabbar a[aria-current="page"] { color: var(--accent); }
@@ -173,6 +208,11 @@ const PAGES = [
   { file: 'observations.html', label: 'Observations', title: 'Observations', icon: 'observations' },
   { file: 'evals.html', label: 'Evals', title: 'Agent evals', icon: 'evals' },
 ];
+
+/** Rate → `50%` (one decimal at most), null → `n/a`. */
+export const formatRate = (v) => (v === null ? 'n/a' : `${Math.round(v * 1000) / 10}%`);
+
+const formatChainValue = (kind, v) => (v === null ? 'n/a' : kind === 'rate' ? formatRate(v) : String(v));
 
 const pill = (tone, text) => `<span class="pill ${tone}">${e(text)}</span>`;
 
@@ -206,6 +246,12 @@ export function renderOverview(m) {
     const n = m.evidence?.[x.key];
     return `<li>${pill(x.tone, x.key)}<span>${e(x.text)}${Number.isInteger(n) ? ` <b>${n}</b>` : ''}</span></li>`;
   }).join('');
+  const rc = m.reviewChain;
+  const reviewChainCard = rc
+    ? `
+<div class="card"><div class="label">Review chain</div><div class="big">${rc.aggregate.reviewed} / ${rc.aggregate.prs}</div>
+<div class="note">PRs with a /pr-review report · <a href="evals.html">observational figures</a></div></div>`
+    : '';
   return layout('index.html', m, `
 <div class="head"><div><h1>Tool health</h1><p class="sub">Overview based on the latest local observations.</p></div>
 <span class="note">Last updated: ${e(formatDate(m.date))}</span></div>
@@ -215,7 +261,7 @@ export function renderOverview(m) {
 <div class="card"><div class="label">Observations fixed</div><div class="big">${m.fixed}</div>
 <div class="note">${m.others} other${m.others === 1 ? '' : 's'} not conclusive</div></div>
 <div class="card"><div class="label">Agent evals</div><div class="big text">Not instrumented</div>
-<div class="note">No eval history is recorded yet.</div></div>
+<div class="note">No eval history is recorded yet.</div></div>${reviewChainCard}
 </div>
 <div class="grid g2">
 <div class="card"><div class="card-head"><h2>Follow-up</h2><a href="observations.html">See all →</a></div>
@@ -236,11 +282,27 @@ export function renderObservations(m) {
 <div class="card"><table><thead><tr><th>ID</th><th>Observation</th><th>Status</th><th>Date</th></tr></thead><tbody>${rows}</tbody></table></div>`);
 }
 
+function reviewChainSection(rc) {
+  const a = rc.aggregate;
+  const rows = REVIEW_CHAIN.map(
+    (x) => `<tr><td><div class="t">${e(x.label)}</div><div class="d">${e(x.text)}</div></td><td><b>${e(formatChainValue(x.kind, a[x.key]))}</b></td></tr>`,
+  ).join('');
+  const caution = a.reviewed < SMALL_SAMPLE
+    ? `<div class="callout">Only ${a.reviewed} reviewed PR${a.reviewed === 1 ? '' : 's'}: too few to read a rate.</div>`
+    : '';
+  return `
+<div class="card"><div class="card-head"><h2>Review chain<span class="tag">observational</span></h2><span class="note">Generated ${e(formatDate(rc.generated))}</span></div>
+<p class="sub">/pr-review → /pr-fixer, extracted from PR history${rc.scope ? ` (${e(rc.scope)})` : ''}: ${a.reviewed} of ${a.prs} PRs carry a report, ${a.reports} report${a.reports === 1 ? '' : 's'} in all.</p>
+${caution}
+<table class="kv"><thead><tr><th>Figure</th><th>Value</th></tr></thead><tbody>${rows}</tbody></table>
+<div class="callout">These are proxies from PR history, not eval scores: there is no ground truth, and "touched" does not mean "fixed".</div></div>`;
+}
+
 export function renderEvals(m) {
   return layout('evals.html', m, `
 <div class="head"><div><h1>Agent evals</h1><p class="sub">Success rate and latency per agent.</p></div></div>
 <div class="card"><div class="big text">Not instrumented</div>
-<p class="sub">No eval set is versioned for the agents yet, so there is nothing to chart. This page stays empty rather than showing invented numbers.</p></div>`);
+<p class="sub">No eval set is versioned for the agents yet, so there is nothing to chart. This page stays empty rather than showing invented numbers.</p></div>${m.reviewChain ? reviewChainSection(m.reviewChain) : ''}`);
 }
 
 // ---------------------------------------------------------------------------

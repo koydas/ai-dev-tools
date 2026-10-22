@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import {
-  escapeHtml, formatDate, validateObservationSet, loadLatestSet, summarize, renderOverview, renderObservations, renderEvals, buildDashboard, parseArgs,
+  escapeHtml, formatDate, validateObservationSet, loadLatestSet, summarize, renderOverview, renderObservations, renderEvals, buildDashboard, parseArgs, formatRate, REVIEW_CHAIN, SMALL_SAMPLE,
 } from '../scripts/build-dashboard.mjs';
 
 const SCRIPT = fileURLToPath(new URL('../scripts/build-dashboard.mjs', import.meta.url));
@@ -160,4 +160,77 @@ test('CLI: builds from the committed sidecars; bad flag → Error + Usage, exit 
     assert.equal(bad.status, 1);
     assert.match(bad.stderr, /^Error: unknown option --bogus\nUsage: /);
   } finally { rmSync(out, { recursive: true, force: true }); }
+});
+
+const chain = (over = {}) => ({
+  generated: '2026-10-22', scope: 'o/r, 30 latest closed PRs',
+  aggregate: { prs: 30, reviewed: 12, reports: 18, blocking_touched_rate: 0.75, non_blocking_touched_rate: 0.5, converged_rate: 0.667, mean_rounds: 1.5, human_threads_after_review: 4, human_threads_beyond_review: 1, ...over },
+});
+
+test('formatRate: ratio → percent with one decimal at most, null → n/a', () => {
+  assert.equal(formatRate(0.5), '50%');
+  assert.equal(formatRate(0.667), '66.7%');
+  assert.equal(formatRate(0), '0%');
+  assert.equal(formatRate(null), 'n/a');
+});
+
+for (const [name, mutate, path] of [
+  ['review_chain not an object', (x) => { x.review_chain = []; }, 'review_chain'],
+  ['generated not a date', (x) => { x.review_chain.generated = 'today'; }, 'review_chain.generated'],
+  ['empty scope', (x) => { x.review_chain.scope = ' '; }, 'review_chain.scope'],
+  ['aggregate missing', (x) => { delete x.review_chain.aggregate; }, 'review_chain.aggregate'],
+  ['count not an integer', (x) => { x.review_chain.aggregate.reports = 1.5; }, 'review_chain.aggregate.reports'],
+  ['reviewed above prs', (x) => { x.review_chain.aggregate.reviewed = 31; }, 'review_chain.aggregate.reviewed'],
+  ['beyond above after', (x) => { x.review_chain.aggregate.human_threads_beyond_review = 5; }, 'review_chain.aggregate.human_threads_beyond_review'],
+  ['rate above 1', (x) => { x.review_chain.aggregate.converged_rate = 1.2; }, 'review_chain.aggregate.converged_rate'],
+  ['rate not a number', (x) => { x.review_chain.aggregate.blocking_touched_rate = '50%'; }, 'review_chain.aggregate.blocking_touched_rate'],
+  ['negative mean_rounds', (x) => { x.review_chain.aggregate.mean_rounds = -1; }, 'review_chain.aggregate.mean_rounds'],
+]) {
+  test(`validateObservationSet: ${name} → error names ${path}`, () => {
+    const x = set({ review_chain: chain() });
+    mutate(x);
+    assert.throws(() => validateObservationSet(x, 'f.json'), (err) => err.message.startsWith(`f.json: ${path} `));
+  });
+}
+
+test('validateObservationSet: review_chain is optional; null rates (unknown) are accepted', () => {
+  assert.ok(validateObservationSet(set()));
+  assert.ok(validateObservationSet(set({ review_chain: chain({ blocking_touched_rate: null, non_blocking_touched_rate: null, converged_rate: null, mean_rounds: null }) })));
+});
+
+test('renderEvals: without review_chain the page has no review-chain section', () => {
+  assert.doesNotMatch(renderEvals(summarize(set())), /Review chain/);
+  assert.doesNotMatch(renderOverview(summarize(set())), /Review chain/);
+});
+
+test('renderEvals: review chain figures, definitions, scope and the proxy caveat', () => {
+  const html = renderEvals(summarize(set({ review_chain: chain() })));
+  assert.match(html, /Not instrumented/);
+  assert.match(html, /12 of 30 PRs carry a report, 18 reports in all/);
+  assert.match(html, /o\/r, 30 latest closed PRs/);
+  for (const x of REVIEW_CHAIN) assert.match(html, new RegExp(x.label));
+  assert.match(html, /<b>75%<\/b>/);
+  assert.match(html, /<b>1\.5<\/b>/);
+  assert.match(html, /not eval scores/);
+  assert.doesNotMatch(html, /too few to read a rate/);
+});
+
+test('renderEvals: below SMALL_SAMPLE reviewed PRs the page says a rate cannot be read; null shows n/a', () => {
+  const html = renderEvals(summarize(set({ review_chain: chain({ reviewed: SMALL_SAMPLE - 1, reports: 1, blocking_touched_rate: null }) })));
+  assert.match(html, new RegExp(`Only ${SMALL_SAMPLE - 1} reviewed PRs: too few to read a rate`));
+  assert.match(html, /<b>n\/a<\/b>/);
+  assert.match(renderEvals(summarize(set({ review_chain: chain({ reviewed: 1, reports: 1 }) }))), /Only 1 reviewed PR: too few/);
+});
+
+test('renderOverview: review chain card shows reviewed / sampled PRs and links to the evals page', () => {
+  const html = renderOverview(summarize(set({ review_chain: chain() })));
+  assert.match(html, /Review chain<\/div><div class="big">12 \/ 30<\/div>/);
+  assert.match(html, /href="evals\.html">observational figures/);
+});
+
+test('renderers: review_chain strings are escaped', () => {
+  const m = summarize(set({ review_chain: chain({}) }));
+  m.reviewChain.scope = '<img src=x onerror=1>';
+  assert.doesNotMatch(renderEvals(m), /<img src/);
+  assert.match(renderEvals(m), /&lt;img src=x onerror=1&gt;/);
 });

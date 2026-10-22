@@ -1,6 +1,6 @@
 # Tool-health dashboard
 
-Static pages summarising the latest local observation session: tests, observations by status, review-evidence vocabulary. Design record: [ADR-019](adr/ADR-019-tool-health-dashboard.md).
+Static pages summarising the latest local observation session: tests, observations by status, review-evidence vocabulary, and — when present — observational review-chain figures. Design records: [ADR-019](adr/ADR-019-tool-health-dashboard.md), [ADR-020](adr/ADR-020-review-chain-on-dashboard.md).
 
 ## Build
 
@@ -23,16 +23,31 @@ Add `docs/observations/<date>.json` beside the Markdown report; the newest `date
   "observations": [
     { "id": "O1", "title": "GraphQL in cloud sessions", "summary": "…", "status": "fixed", "date": "2026-10-22" }
   ],
-  "review_evidence": { "PASS": 0, "FAIL": 0, "NOT_RUN": 0, "PRE_EXISTING": 0 }
+  "review_evidence": { "PASS": 0, "FAIL": 0, "NOT_RUN": 0, "PRE_EXISTING": 0 },
+  "review_chain": {
+    "generated": "2026-10-22",
+    "scope": "koydas/ai-dev-tools, 30 latest closed PRs",
+    "aggregate": { "prs": 30, "reviewed": 1, "reports": 1, "blocking_touched_rate": 1, "non_blocking_touched_rate": 1, "converged_rate": 0, "mean_rounds": 1, "human_threads_after_review": 0, "human_threads_beyond_review": 0 }
+  }
 }
 ```
 
-`status`: `open` · `unverified` · `fixed` · `not_applicable`. `source` and `review_evidence` are optional. An invalid field fails the build with its path (`f.json: observations[2].status must be one of …`).
+`status`: `open` · `unverified` · `fixed` · `not_applicable`. `source`, `review_evidence` and `review_chain` are optional. An invalid field fails the build with its path (`f.json: observations[2].status must be one of …`).
 
 ## Pages
 
 | Page | Content |
 |---|---|
-| Overview | Tests run, observations fixed (and how many are not conclusive), agent evals tile, follow-up list (open and unverified first, max 4), review-evidence legend |
+| Overview | Tests run, observations fixed (and how many are not conclusive), agent evals tile, review-chain tile (reviewed / sampled PRs, when `review_chain` is set), follow-up list (open and unverified first, max 4), review-evidence legend |
 | Observations | Every observation, open first |
-| Evals | "Not instrumented" until an eval set exists |
+| Evals | "Not instrumented" until an eval set exists; below it, the review-chain figures when `review_chain` is set |
+
+## Review chain
+
+`review_chain.aggregate` is the `aggregate` of `scripts/review-chain-metrics.mjs`; copy it with its `generated` date and a `scope` naming the repo and window:
+
+```bash
+node scripts/review-chain-metrics.mjs --repo koydas/ai-dev-tools --recent 30   # --recent: 1..100
+```
+
+The figures are proxies from PR history, not eval scores (ADR-020): "touched" means a later commit changed the cited file, not that the finding was fixed. A rate that cannot be computed is `null` and shows `n/a`; under 10 reviewed PRs the page says a rate cannot be read.
