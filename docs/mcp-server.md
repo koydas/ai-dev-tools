@@ -107,7 +107,7 @@ It posts a plain issue/PR comment — never a review verdict, an approval or a m
 
 ## Prompts
 
-Each file of `commands/` is a prompt of the same name: `ac-check`, `bug-seeker`, `check-releases`, `demo-prep`, `issue-code-generation`, `issue-notes`, `pr-fixer`, `pr-review`, `resume`, `token-audit`. `sync-ai-dev-tools` is excluded: it administers a Claude Code install.
+Each file of `commands/` is a prompt of the same name: `ac-check`, `bug-seeker`, `check-releases`, `demo-prep`, `issue-code-generation`, `issue-notes`, `loop-insights`, `pr-fixer`, `pr-review`, `resume`, `token-audit`. `sync-ai-dev-tools` is excluded: it administers a Claude Code install.
 
 Each takes one optional argument, `arguments`, substituted for `$ARGUMENTS` (for example `42` for `ac-check`). `${CLAUDE_PLUGIN_ROOT}` becomes the absolute path of the clone, so the script paths in the prompt resolve from any working directory ([ADR-013](adr/ADR-013-plugin-distribution-and-script-paths.md)). A fixed preamble tells the host to read named subagents from the resources below.
 

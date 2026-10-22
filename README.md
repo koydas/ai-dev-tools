@@ -163,6 +163,7 @@ Next step and what to pass forward
 | `/issue-notes [id]` | — | Generate technical overview, post as GitHub issue comment |
 | `/demo-prep` | — | Feature description → slide-ready sprint demo content |
 | `/token-audit [days]` | — | Audit Claude Code token usage — trends, model breakdown, command adoption |
+| `/loop-insights [--finding <key>] [--source <url\|path>]` | `loop-analyst` | Draft proposals for changes to an autonomous-dev-loop deployment from its published `findings.json` — read-only, nothing posted or created ([ADR-017](docs/adr/ADR-017-loop-insights-command.md)) |
 | `/check-releases` | — | List repos with main changes not yet in a release |
 | `/sync-ai-dev-tools` | — | Sync commands, agents, and prompts from this repo to `~/.claude` |
 
@@ -181,6 +182,7 @@ Next step and what to pass forward
 | `pr-analyst` | PR diff | Structured review summary with an Evidence table of executed checks |
 | `doc-builder` | Repo/branch context | Documentation |
 | `impact-analyst` | Proposed change | Cross-repo blast radius analysis |
+| `loop-analyst` | Validated findings export | One proposal per finding with a lever: observed, hypothesis (unverified), lever, draft change, gate — read-only (`Read` only) |
 
 ### Rules
 
@@ -216,7 +218,8 @@ Next step and what to pass forward
 | `list-files.mjs` | Recursive numbered file listing | CLI |
 | `checkpoint.mjs` | Write / read / list pipeline checkpoints, namespaced by repo and issue | via `/issue-code-generation`, `/resume` |
 | `check-releases.mjs` | List repos with changes on main not yet in a release | via `/check-releases` |
-| `config.mjs` | `loadGitConfig()` / `loadPathsConfig()` — read `configs/git.yaml` / `configs/paths.yaml` | library |
+| `config.mjs` | `loadGitConfig()` / `loadPathsConfig()` / `loadMetaLoopConfig()` — read `configs/git.yaml` / `configs/paths.yaml` / `configs/meta-loop.yaml` | library |
+| `loop-insights.mjs` | Fetch the autonomous-dev-loop `findings.json` (https or local path, no token, size and time caps), validate it field by field, drop unknown fields, select the findings with a lever → JSON for `loop-analyst` | via `/loop-insights` |
 | `report-path.mjs` | Resolve the review report path from PR JSON on stdin (`AI_DEV_TOOLS_REPORTS_DIR`, else `configs/paths.yaml`; refuses a non-ignored dir inside the working tree) | CLI / via commands |
 | `mcp-server.mjs` | MCP server over stdio: the GitHub scripts as tools, commands as prompts, agents as resources; `post_comment` confirmed by elicitation (ADR-016) | MCP client |
 | `mcp-tools.mjs` | MCP tool registry — schemas, annotations, input validation → script argv | library |

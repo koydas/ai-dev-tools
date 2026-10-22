@@ -30,10 +30,10 @@ These rules apply to every Claude Code session regardless of repository.
 
 All slash commands are available in `~/.claude/commands/`. Type `/command-name` to invoke a pipeline.
 
-Key commands: `/issue-code-generation`, `/pr-review`, `/pr-fixer`, `/ac-check`, `/bug-seeker`, `/issue-notes`, `/token-audit`, `/check-releases`, `/sync-ai-dev-tools`
+Key commands: `/issue-code-generation`, `/pr-review`, `/pr-fixer`, `/ac-check`, `/bug-seeker`, `/issue-notes`, `/token-audit`, `/loop-insights`, `/check-releases`, `/sync-ai-dev-tools`
 
 ## Agents
 
 All agent definitions are in `~/.claude/agents/`. Agents are invoked by commands — do not call them directly unless debugging a pipeline step.
 
-Available agents: `ticket-analyst`, `code-builder`, `code-reviewer`, `pr-analyst`, `doc-builder`, `impact-analyst`
+Available agents: `ticket-analyst`, `code-builder`, `code-reviewer`, `pr-analyst`, `doc-builder`, `impact-analyst`, `loop-analyst`
