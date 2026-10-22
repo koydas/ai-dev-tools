@@ -224,6 +224,7 @@ Next step and what to pass forward
 | `mcp-server.mjs` | MCP server over stdio: the GitHub scripts as tools, commands as prompts, agents as resources; `post_comment` confirmed by elicitation (ADR-016) | MCP client |
 | `mcp-tools.mjs` | MCP tool registry — schemas, annotations, input validation → script argv | library |
 | `build-dashboard.mjs` | Build the static tool-health dashboard (overview, observations, evals) from the `docs/observations/*.json` sidecars → `_site/`; deployed to GitHub Pages by `dashboard.yml` (ADR-019) | CLI / CI |
+| `review-chain-metrics.mjs` | Extract /pr-review → /pr-fixer chain metrics from PR history (rounds, findings touched since the report, human threads beyond the review, CI on head) → JSON; observational proxies, `null` when unknown | CLI |
 
 ---
 
