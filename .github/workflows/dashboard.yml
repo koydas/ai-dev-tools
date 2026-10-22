@@ -1,0 +1,45 @@
+name: Dashboard
+
+# Builds the tool-health dashboard from docs/observations/*.json and deploys it to GitHub Pages (ADR-019).
+# One-time setup: repository Settings → Pages → Source: GitHub Actions.
+on:
+  push:
+    branches: [main]
+    paths:
+      - docs/observations/**
+      - scripts/build-dashboard.mjs
+      - .github/workflows/dashboard.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dashboard
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --test tests/build-dashboard.test.mjs
+      - run: node scripts/build-dashboard.mjs --out _site
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deploy
+        uses: actions/deploy-pages@v4
