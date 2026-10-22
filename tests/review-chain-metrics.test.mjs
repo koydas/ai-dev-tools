@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { parseFinding, parseReport, summarizeChecks, afterCount, buildRecord, aggregate } from '../scripts/review-chain-metrics.mjs';
+import { asMember, parseFinding, parseReport, summarizeChecks, afterCount, buildRecord, aggregate } from '../scripts/review-chain-metrics.mjs';
 
 const SCRIPT = fileURLToPath(new URL('../scripts/review-chain-metrics.mjs', import.meta.url));
 
@@ -161,5 +161,30 @@ test('CLI: no argument → usage, exit 1; unknown flag → exit 1; bad ref → e
     const r = spawnSync(process.execPath, [SCRIPT, ...args], { encoding: 'utf8' });
     assert.equal(r.status, 1);
     assert.match(r.stderr, /Usage|Error/);
+  }
+});
+
+test('asMember: keeps path of a review comment, null for an issue comment', () => {
+  const rc = asMember({ id: 1, path: 'src/a.mjs', user: { login: 'dev', type: 'User' }, author_association: 'OWNER', body: 'x', created_at: '2026-10-01T00:00:00Z' });
+  assert.equal(rc.path, 'src/a.mjs');
+  assert.equal(asMember({ id: 2, body: 'y', created_at: '2026-10-01T00:00:00Z' }).path, null);
+});
+
+test('buildRecord: a thread on a file a report cited is not beyond the review', () => {
+  const body = report('NEEDS_REVIEW', 'aaa1111', { blocking: [B1] });
+  const rec = buildRecord({
+    pr: prInfo,
+    comments: [{ id: 1, ...trustedUser, createdAt: '2026-10-01T01:00:00Z', body }],
+    threads: [asMember({ id: 9, path: 'src/a.mjs', user: { login: 'dev', type: 'User' }, author_association: 'OWNER', body: 'q', created_at: '2026-10-01T02:00:00Z' })],
+    commits,
+  });
+  assert.deepEqual([rec.human_threads_after_review, rec.human_threads_beyond_review], [1, 0]);
+});
+
+test('CLI: --recent outside 1..100 or non-numeric → exit 1', () => {
+  for (const n of ['0', '101', 'abc']) {
+    const r = spawnSync(process.execPath, [SCRIPT, '--repo', 'o/r', '--recent', n], { encoding: 'utf8' });
+    assert.equal(r.status, 1);
+    assert.match(r.stderr, /--recent expects/);
   }
 });

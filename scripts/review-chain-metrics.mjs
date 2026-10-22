@@ -139,7 +139,8 @@ export function aggregate(records) {
   };
 }
 
-const asMember = (c) => ({ id: c.id, login: c.user?.login ?? null, type: c.user?.type ?? null, association: c.author_association ?? null, body: c.body ?? '', createdAt: c.created_at ?? c.submitted_at });
+// Pure: a REST comment / review → the shape buildRecord reads (`path` only on review comments).
+export const asMember = (c) => ({ id: c.id, path: c.path ?? null, login: c.user?.login ?? null, type: c.user?.type ?? null, association: c.author_association ?? null, body: c.body ?? '', createdAt: c.created_at ?? c.submitted_at });
 
 // Fetches one PR's facts over REST and builds its record.
 export function collectPr(number, repo) {
@@ -188,8 +189,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   try {
     let refs = positional.map(parsePrRef);
     if (recent) {
-      if (!/^\d+$/.test(recent)) throw new Error('--recent expects a number');
-      const closed = JSON.parse(gh(['api', `repos/${resolveRepo(repo)}/pulls?state=closed&per_page=${Math.min(Number(recent), 100)}`]));
+      if (!/^\d+$/.test(recent) || Number(recent) < 1 || Number(recent) > 100) throw new Error('--recent expects a number between 1 and 100 (one REST page)');
+      const closed = JSON.parse(gh(['api', `repos/${resolveRepo(repo)}/pulls?state=closed&per_page=${recent}`]));
       refs = closed.map((p) => ({ number: p.number, repo: undefined }));
     }
     if (!refs.length) { console.error(USAGE); process.exit(1); }
