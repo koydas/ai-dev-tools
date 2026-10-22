@@ -6,7 +6,7 @@ Draft proposals for changes to an autonomous-dev-loop deployment from its publis
 
 ## Purpose
 
-autonomous-dev-loop publishes the findings of its Diagnostics page as `findings.json`, each with a suggested lever (the setting, prompt or workflow that governs the pattern) when the pattern is active and actionable. `/loop-insights` reads that file and writes, for each finding with a lever, a short proposal: what was observed, what to change, what to check first, which gate applies.
+autonomous-dev-loop publishes the findings of its Diagnostics page as `findings.json`, each with a suggested lever (the setting or prompt that governs the pattern) when the pattern is active and actionable. `/loop-insights` reads that file and writes, for each finding with a lever, a short proposal: what was observed, what to change, what to check first, which gate applies.
 
 It is read-only. It creates no issue, comment, file or branch. What you do with a proposal is your decision.
 
