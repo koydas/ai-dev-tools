@@ -1,6 +1,6 @@
 # ADR-017 — `/loop-insights`: drafting proposals from a published findings export
 
-**Status:** Proposed  
+**Status:** Accepted (2026-10-22; implemented in PR #31 — the optional `loop_findings` MCP tool of point 7 stays deferred)  
 **Date:** 2026-10-22  
 **Relates to:** ADR-001 (human as gate), ADR-003 (agent output contract), ADR-005 (commands delegate logic), ADR-007 (scripts own I/O), ADR-016 (MCP server); autonomous-dev-loop ADR-0046 and ADR-0047
 
