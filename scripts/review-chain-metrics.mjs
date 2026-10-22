@@ -97,7 +97,8 @@ export function buildRecord({ pr, comments = [], threads = [], commits = [], fil
 
   const cited = new Set(reports.flatMap((r) => [...r.blocking, ...r.nonBlocking].map((f) => f.path)));
   const first = reports[0]?.createdAt ?? null;
-  const trusted = (t) => ['OWNER', 'MEMBER', 'COLLABORATOR'].includes(t.association) && t.type === 'User';
+  // Same rule as /pr-fixer: a trusted human, not a bot, a generated comment or an outsider.
+  const trusted = (t) => classifyComment({ login: t.login, type: t.type, association: t.association, body: t.body }) === 'human';
   const humanThreads = first ? threads.filter((t) => trusted(t) && t.createdAt > first) : [];
   const headChecks = Object.entries(checks).find(([sha]) => sameSha(sha, pr.headSha))?.[1];
 
