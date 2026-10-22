@@ -1,0 +1,3 @@
+# Source of /loop-insights (non-secret). The findings export published by autonomous-dev-loop's dashboard
+# (ADR-017). `--source <url|path>` overrides it: an https:// URL or a local file path.
+findings_url: https://koydas.github.io/autonomous-dev-loop/findings.json

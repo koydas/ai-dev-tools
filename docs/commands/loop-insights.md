@@ -1,6 +1,6 @@
 # /loop-insights
 
-> **Status: proposed, not implemented.** Specified by [ADR-017](../adr/ADR-017-loop-insights-command.md). The command, the agent and the script do not exist yet; this page is the reference to implement against.
+> Specified by [ADR-017](../adr/ADR-017-loop-insights-command.md). Needs the autonomous-dev-loop export (`findings.json`, `schema_version: 1`, with `lever`), implemented in its meta-loop steps 1 to 3.
 
 Draft proposals for changes to an autonomous-dev-loop deployment from its published findings.
 
@@ -27,7 +27,7 @@ It is read-only. It creates no issue, comment, file or branch. What you do with 
 ## What it does
 
 1. `scripts/loop-insights.mjs` fetches the export (`https` or a local file, no token), checks `schema_version`, validates the shape, drops unknown fields, and keeps the findings that have a `lever`, with bounded evidence (5 entries, `summary` cut to 200 characters).
-2. The `loop-analyst` agent drafts one proposal per finding from that JSON only.
+2. The `loop-analyst` agent (read-only: its only tool is `Read`) drafts one proposal per finding from that JSON only. If the script fails (unreachable source, unsupported `schema_version`, invalid shape, unknown key), the command reports `BLOCKED` with the reason and does not call the agent.
 3. The command prints the report.
 
 ## Configuration

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Read configs/git.yaml and configs/paths.yaml — minimal key: value YAML parser (no external deps)
+// Read configs/git.yaml, configs/paths.yaml and configs/meta-loop.yaml — minimal key: value YAML parser (no external deps)
 // Supports: comments, string values, null values. No nested keys or lists.
 
 import { existsSync, readFileSync } from 'node:fs';
@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const GIT_CONFIG_PATH = join(REPO_ROOT, 'configs', 'git.yaml');
 const PATHS_CONFIG_PATH = join(REPO_ROOT, 'configs', 'paths.yaml');
+const META_LOOP_CONFIG_PATH = join(REPO_ROOT, 'configs', 'meta-loop.yaml');
 
 const DEFAULTS = {
   default_branch: 'main',
@@ -30,6 +31,17 @@ export function loadPathsConfig(configPath = PATHS_CONFIG_PATH) {
   const parsed = parseYaml(readFileSync(configPath, 'utf8'));
   // A key present with an empty value falls back to its default.
   return Object.fromEntries(Object.entries({ ...PATHS_DEFAULTS, ...parsed }).map(([k, v]) => [k, v ?? PATHS_DEFAULTS[k] ?? null]));
+}
+
+const META_LOOP_DEFAULTS = {
+  findings_url: 'https://koydas.github.io/autonomous-dev-loop/findings.json',
+};
+
+export function loadMetaLoopConfig(configPath = META_LOOP_CONFIG_PATH) {
+  if (!existsSync(configPath)) return { ...META_LOOP_DEFAULTS };
+  const parsed = parseYaml(readFileSync(configPath, 'utf8'));
+  // A key present with an empty value falls back to its default.
+  return Object.fromEntries(Object.entries({ ...META_LOOP_DEFAULTS, ...parsed }).map(([k, v]) => [k, v ?? META_LOOP_DEFAULTS[k] ?? null]));
 }
 
 function parseYaml(content) {

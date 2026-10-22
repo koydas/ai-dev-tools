@@ -1,0 +1,253 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-22T16:49:00.000Z",
+  "window": {
+    "from": 1792497600000,
+    "to": 1792497620000,
+    "runs": 7
+  },
+  "status": "critical",
+  "findings": [
+    {
+      "key": "runs-failed",
+      "id": "runs-failed",
+      "category": "Execution",
+      "title": "Runs ended in failure",
+      "severity": "critical",
+      "status": "active",
+      "first_seen": 1792497604000,
+      "last_seen": 1792497604000,
+      "clean_since": null,
+      "fact": "1 of 7 run(s) recorded the outcome failed.",
+      "hypothesis": null,
+      "impact": "1 run(s) stopped before completing their stage",
+      "frequency": "1 run(s)",
+      "evidence": [
+        {
+          "run_id": "904-1",
+          "ts": 1792497604000,
+          "event": "review.error",
+          "summary": "error=boom",
+          "pr": 9,
+          "url": null
+        }
+      ],
+      "lever": null
+    },
+    {
+      "key": "review-withheld",
+      "id": "review-withheld",
+      "category": "Review",
+      "title": "Reviews withhold their verdict",
+      "severity": "warning",
+      "status": "active",
+      "first_seen": 1792497601000,
+      "last_seen": 1792497607000,
+      "clean_since": null,
+      "fact": "6 of 6 verdicts are WITHHELD (100 %); 3 of them had code files not reviewed, 3 would have been APPROVE (withheld_from). They cover 6 PR head(s) on 1 PR(s). Guardrail: 3 (code cut, ADR-0038: 3; CI evidence, ADR-0026: 0); anomaly: 3 (REQUEST_CHANGES on unseen code: 0; unknown cause: 3; fallback answered a prompt cut to the primary's budget: 0). Answered by: not recorded 6; input budget 6300 tokens.",
+      "hypothesis": null,
+      "impact": "6 review(s) ended without a usable verdict; a person has to review",
+      "frequency": "6 verdict(s) on 6 head(s) of 1 PR(s)",
+      "evidence": [
+        {
+          "run_id": "901-1",
+          "ts": 1792497601000,
+          "event": "review.verdict",
+          "summary": "verdict=WITHHELD",
+          "pr": 9,
+          "url": null
+        },
+        {
+          "run_id": "902-1",
+          "ts": 1792497602000,
+          "event": "review.verdict",
+          "summary": "verdict=WITHHELD",
+          "pr": 9,
+          "url": null
+        },
+        {
+          "run_id": "903-1",
+          "ts": 1792497603000,
+          "event": "review.verdict",
+          "summary": "verdict=WITHHELD",
+          "pr": 9,
+          "url": null
+        },
+        {
+          "run_id": "905-1",
+          "ts": 1792497605000,
+          "event": "review.verdict",
+          "summary": "verdict=WITHHELD",
+          "pr": 10,
+          "url": null
+        },
+        {
+          "run_id": "906-1",
+          "ts": 1792497606000,
+          "event": "review.verdict",
+          "summary": "verdict=WITHHELD",
+          "pr": 10,
+          "url": null
+        },
+        {
+          "run_id": "907-1",
+          "ts": 1792497607000,
+          "event": "review.verdict",
+          "summary": "verdict=WITHHELD",
+          "pr": 10,
+          "url": null
+        }
+      ],
+      "lever": {
+        "stage": "review",
+        "summary": "Reviews are withheld on code the prompt budget or the CI evidence leaves unseen",
+        "targets": [
+          {
+            "kind": "config",
+            "ref": "config/models.yaml#review_max_input_tokens",
+            "gate": "review",
+            "requires": "evals"
+          },
+          {
+            "kind": "config",
+            "ref": "config/models.yaml#anthropic_review_max_diff_chars",
+            "gate": "review",
+            "requires": "evals"
+          },
+          {
+            "kind": "variable",
+            "ref": "AI_PROVIDER_REVIEW",
+            "gate": "review",
+            "requires": "evals"
+          },
+          {
+            "kind": "config",
+            "ref": "config/review-evidence.yaml#checks",
+            "gate": "review",
+            "requires": "evals"
+          }
+        ],
+        "adr": [
+          "0026",
+          "0038"
+        ],
+        "requires": [
+          "evals",
+          "docs-and-tests"
+        ],
+        "verified": false
+      }
+    },
+    {
+      "key": "review-stuck",
+      "id": "review-stuck",
+      "category": "Review",
+      "title": "PRs not approved after several reviews",
+      "severity": "warning",
+      "status": "active",
+      "first_seen": 1792497605000,
+      "last_seen": 1792497607000,
+      "clean_since": null,
+      "fact": "1 PR(s) have their last 3+ verdicts without an APPROVE: #9 (6).",
+      "hypothesis": null,
+      "impact": "6 review run(s) without converging",
+      "frequency": "1 PR(s)",
+      "evidence": [
+        {
+          "run_id": "905-1",
+          "ts": 1792497605000,
+          "event": "review.verdict",
+          "summary": "verdict=WITHHELD",
+          "pr": 10,
+          "url": null
+        },
+        {
+          "run_id": "906-1",
+          "ts": 1792497606000,
+          "event": "review.verdict",
+          "summary": "verdict=WITHHELD",
+          "pr": 10,
+          "url": null
+        },
+        {
+          "run_id": "907-1",
+          "ts": 1792497607000,
+          "event": "review.verdict",
+          "summary": "verdict=WITHHELD",
+          "pr": 10,
+          "url": null
+        }
+      ],
+      "lever": null
+    },
+    {
+      "key": "review-coverage",
+      "id": "review-coverage",
+      "category": "Review",
+      "title": "Review diffs are cut by design (ADR-0038)",
+      "severity": "info",
+      "status": "active",
+      "first_seen": 1792497605000,
+      "last_seen": 1792497607000,
+      "clean_since": null,
+      "fact": "3 of 6 reviews saw a truncated diff; median 3 code file(s) not reviewed, input budget 6300 tokens. Guardrail (WITHHELD, ADR-0038): 3; anomaly: 0 (APPROVE on a cut diff, impossible since ADR-0038: 0; other verdict: 0).",
+      "hypothesis": "The guardrail worked as designed: approval is withheld on code the review did not see (ADR-0038). The lever is the provider or its input budget (review_max_input_tokens, ADR-0025).",
+      "impact": "50 % of reviews are incomplete",
+      "frequency": "3 review(s)",
+      "evidence": [
+        {
+          "run_id": "905-1",
+          "ts": 1792497605000,
+          "event": "review.prompt_truncated",
+          "summary": "",
+          "pr": 10,
+          "url": null
+        },
+        {
+          "run_id": "906-1",
+          "ts": 1792497606000,
+          "event": "review.prompt_truncated",
+          "summary": "",
+          "pr": 10,
+          "url": null
+        },
+        {
+          "run_id": "907-1",
+          "ts": 1792497607000,
+          "event": "review.prompt_truncated",
+          "summary": "",
+          "pr": 10,
+          "url": null
+        }
+      ],
+      "lever": null
+    }
+  ],
+  "gaps": [
+    {
+      "id": "merge-not-journaled",
+      "title": "Merge is journaled only from item-closed.yml on",
+      "detail": "A merge or a closing is recorded (item.closed) only for items closed after item-closed.yml existed, and only in this repository; the Pipelines page asks GitHub for merged_at in the browser for the rest."
+    },
+    {
+      "id": "closure-before-journal",
+      "title": "Closings before the closing journal are not recorded",
+      "detail": "Only items closed or merged after item-closed.yml was merged have an item.closed event. An item closed before it that last escalated still reads as escalated: the dashboard does not infer a closing from GitHub or from silence. The Pipelines page re-checks pull requests live."
+    },
+    {
+      "id": "running-not-observable",
+      "title": "Running state is not observable",
+      "detail": "A record is written when its run completes, so a run in progress never appears; the latest state of an item can be older than GitHub."
+    },
+    {
+      "id": "untraced",
+      "title": "Runs outside any work-item trace",
+      "detail": "7 run(s) have no trace index: they appear in Investigation but not in Pipelines."
+    },
+    {
+      "id": "duration-thin",
+      "title": "Duration trend not computable",
+      "detail": "Fewer than 3 runs in one of the two latest 7-day periods for: review. No degradation is reported for them — that is not the same as no degradation."
+    }
+  ]
+}
