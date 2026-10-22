@@ -131,8 +131,8 @@ header { background: var(--surface); border-bottom: 1px solid var(--border); }
 .bar { max-width: 1120px; margin: 0 auto; padding: 0 16px; display: flex; align-items: center; gap: 24px; min-height: 64px; }
 .brand { display: flex; flex-direction: column; line-height: 1.15; color: var(--ink); } .brand b { letter-spacing: .04em; } .brand small { color: var(--muted); }
 nav { display: flex; gap: 4px; flex: 1; overflow-x: auto; scrollbar-width: none; }
-nav a { color: var(--ink-2); padding: 20px 12px 18px; border-bottom: 2px solid transparent; white-space: nowrap; }
-nav a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--accent); }
+.bar nav a { color: var(--ink-2); padding: 20px 12px 18px; border-bottom: 2px solid transparent; white-space: nowrap; }
+.bar nav a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--accent); }
 main { max-width: 1120px; margin: 0 auto; padding: 32px 16px 48px; }
 h1 { margin: 0; font-size: 30px; } h2 { margin: 0; font-size: 18px; } .sub { color: var(--ink-2); margin: 4px 0 0; }
 .head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; align-items: end; margin-bottom: 24px; }
@@ -149,21 +149,38 @@ ul.rows li:first-child { border-top: 0; } .t { font-weight: 600; } .d { color: v
 ul.legend li { justify-content: flex-start; } .legend .pill { min-width: 128px; text-align: center; font-family: ui-monospace, monospace; }
 .callout { background: var(--neutral-bg); color: var(--ink-2); border-radius: 8px; padding: 10px 14px; margin-top: 12px; font-size: 13px; }
 .tag { background: var(--accent-bg); color: var(--accent); border-radius: 999px; padding: 1px 10px; font-size: 12px; margin-left: 8px; }
-table { width: 100%; border-collapse: collapse; } th, td { text-align: left; padding: 10px 8px; border-top: 1px solid var(--border); vertical-align: top; } th { color: var(--muted); font-weight: 500; font-size: 13px; border-top: 0; }
+table { width: 100%; border-collapse: collapse; } td:last-child { white-space: nowrap; } th, td { text-align: left; padding: 10px 8px; border-top: 1px solid var(--border); vertical-align: top; } th { color: var(--muted); font-weight: 500; font-size: 13px; border-top: 0; }
+.tabbar { display: none; }
+@media (max-width: 760px) {
+  .bar nav { display: none; } .bar { min-height: 56px; } th:last-child, td:last-child { display: none; }
+  .tabbar { display: grid; grid-template-columns: repeat(3, 1fr); position: fixed; bottom: 0; left: 0; right: 0; z-index: 25; background: var(--surface); border-top: 1px solid var(--border); padding: 4px 4px calc(4px + env(safe-area-inset-bottom)); }
+  .tabbar a { display: grid; justify-items: center; gap: 2px; padding: 6px 2px; min-height: 44px; font-size: 11px; font-weight: 600; color: var(--muted); text-decoration: none; }
+  .tabbar a[aria-current="page"] { color: var(--accent); }
+  .tabbar svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  body { padding-bottom: 72px; }
+}
 footer { max-width: 1120px; margin: 0 auto; padding: 0 16px 32px; color: var(--muted); font-size: 13px; }
 `;
 
+const ICON = {
+  overview: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  observations: '<path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/>',
+  evals: '<path d="M5 21V10M12 21V3M19 21v-7"/>',
+};
+
 const PAGES = [
-  { file: 'index.html', label: 'Overview', title: 'Tool health' },
-  { file: 'observations.html', label: 'Observations', title: 'Observations' },
-  { file: 'evals.html', label: 'Evals', title: 'Agent evals' },
+  { file: 'index.html', label: 'Overview', title: 'Tool health', icon: 'overview' },
+  { file: 'observations.html', label: 'Observations', title: 'Observations', icon: 'observations' },
+  { file: 'evals.html', label: 'Evals', title: 'Agent evals', icon: 'evals' },
 ];
 
 const pill = (tone, text) => `<span class="pill ${tone}">${e(text)}</span>`;
 
 function layout(current, model, bodyHtml) {
   const page = PAGES.find((p) => p.file === current);
-  const nav = PAGES.map((p) => `<a href="${p.file}"${p.file === current ? ' aria-current="page"' : ''}>${e(p.label)}</a>`).join('');
+  const link = (p, inner) => `<a href="${p.file}"${p.file === current ? ' aria-current="page"' : ''}>${inner}</a>`;
+  const nav = PAGES.map((p) => link(p, e(p.label))).join('');
+  const tabs = PAGES.map((p) => link(p, `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[p.icon]}</svg>${e(p.label)}`)).join('');
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${e(page.title)} — ai-dev-tools</title><style>${STYLE}</style></head>
@@ -173,6 +190,7 @@ function layout(current, model, bodyHtml) {
 <a href="${REPO_URL}">GitHub ↗</a>
 </div></header>
 <main>${bodyHtml}</main>
+<nav class="tabbar" aria-label="Pages">${tabs}</nav>
 <footer>Built from local observation reports of ${e(formatDate(model.date))}${model.source ? ` (<code>${e(model.source)}</code>)` : ''}. No aggregated history.</footer>
 </body></html>
 `;

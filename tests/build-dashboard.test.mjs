@@ -109,6 +109,17 @@ test('renderers: sidecar strings are escaped', () => {
   assert.match(renderObservations(m), /&lt;img src=x onerror=1&gt;/);
 });
 
+test('layout: top nav and bottom tab bar both list the three pages, current page marked in each', () => {
+  const m = summarize(set());
+  for (const [html, file] of [[renderOverview(m), 'index.html'], [renderObservations(m), 'observations.html'], [renderEvals(m), 'evals.html']]) {
+    const tabbar = /<nav class="tabbar"[^>]*>(.*?)<\/nav>/s.exec(html)[1];
+    assert.equal((tabbar.match(/<a href=/g) ?? []).length, 3);
+    assert.equal((tabbar.match(/aria-current="page"/g) ?? []).length, 1);
+    assert.match(tabbar, new RegExp(`<a href="${file}" aria-current="page">`));
+    assert.equal((html.match(/<a href="[^"]+" aria-current="page">/g) ?? []).length, 2);
+  }
+});
+
 test('renderers: no script, no external asset; observations lists every row; evals is explicit about missing data', () => {
   const m = summarize(set());
   const all = renderOverview(m) + renderObservations(m) + renderEvals(m);
