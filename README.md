@@ -167,6 +167,8 @@ Next step and what to pass forward
 | `check-releases.mjs` | List repos with changes on main not yet in a release | via `/check-releases` |
 | `config.mjs` | `loadGitConfig()` / `loadPathsConfig()` — read `configs/git.yaml` / `configs/paths.yaml` | library |
 | `report-path.mjs` | Resolve the review report path from PR JSON on stdin (`AI_DEV_TOOLS_REPORTS_DIR`, else `configs/paths.yaml`; refuses a non-ignored dir inside the working tree) | CLI / via commands |
+| `mcp-server.mjs` | MCP server over stdio: the GitHub scripts as tools, commands as prompts, agents as resources; `post_comment` confirmed by elicitation (ADR-016) | MCP client |
+| `mcp-tools.mjs` | MCP tool registry — schemas, annotations, input validation → script argv | library |
 
 ---
 
@@ -232,6 +234,25 @@ git clone --depth 1 https://github.com/koydas/ai-dev-tools "$HOME/ai-dev-tools" 
 ```
 
 `sync-claude.mjs` writes the absolute clone path in place of `${CLAUDE_PLUGIN_ROOT}` in the copies under `~/.claude`.
+
+### Use from another MCP host
+
+`scripts/mcp-server.mjs` exposes the toolbox over MCP ([ADR-016](docs/adr/ADR-016-mcp-server.md)): stdio, zero dependency, needs `gh` authenticated where it runs.
+
+```json
+{ "mcpServers": { "ai-dev-tools": { "command": "node", "args": ["/abs/path/to/ai-dev-tools/scripts/mcp-server.mjs"] } } }
+```
+
+Claude Code: `claude mcp add ai-dev-tools -- node /abs/path/to/ai-dev-tools/scripts/mcp-server.mjs`.
+
+| Surface | Content |
+|---|---|
+| Tools (read) | `get_issue`, `get_pr`, `get_pr_threads`, `get_pr_feedback`, `get_check_runs`, `my_issues`, `normalize_pr` |
+| Tool (write) | `post_comment` — plain comment only; the user is asked to confirm when the client supports elicitation, otherwise the client's tool approval is the gate |
+| Prompts | the commands (`pr-review`, `ac-check`, …; not `sync-ai-dev-tools`), one optional `arguments` string |
+| Resources | the agents, `ai-dev-tools://agents/<name>` |
+
+Pass `repo` (`owner/repo`) on tools: without it, the repository is resolved from the server's working directory.
 
 ### Sync after updates
 
