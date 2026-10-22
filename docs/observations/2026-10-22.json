@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-22",
+  "source": "docs/observations/2026-10-22-scripts-cloud-session.md",
+  "tests": { "passed": 160, "total": 160 },
+  "observations": [
+    { "id": "O1", "title": "GraphQL in cloud sessions", "summary": "Every gh view script paid one failed GraphQL round-trip before REST. Skipped when CLAUDE_CODE_REMOTE is set.", "status": "fixed", "date": "2026-10-22" },
+    { "id": "O2", "title": "gh auth status", "summary": "gh auth status is red while gh api works. No script gates on it.", "status": "not_applicable", "date": "2026-10-22" },
+    { "id": "O3", "title": "CLI arguments", "summary": "Unknown flags were silently ignored by five gh-* scripts. They now fail before any network call.", "status": "fixed", "date": "2026-10-22" },
+    { "id": "O4", "title": "Checkpoint errors", "summary": "checkpoint.mjs printed a raw stack trace on invalid input. It now prints Error + Usage.", "status": "fixed", "date": "2026-10-22" },
+    { "id": "O5", "title": "Token audit / cache", "summary": "Totals excluded cache tokens without saying so. Labelled, and --include-cache added.", "status": "fixed", "date": "2026-10-22" },
+    { "id": "O6", "title": "loop-insights fetch error", "summary": "An unreachable source reported only 'fetch failed'. The error now carries its cause.", "status": "fixed", "date": "2026-10-22" },
+    { "id": "O7", "title": "Thread resolution outside CCR", "summary": "rest+ccr is specific to Claude Code sessions. Not exercised: no non-ccr environment available.", "status": "unverified", "date": "2026-10-22" }
+  ]
+}
