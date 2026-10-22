@@ -16,7 +16,7 @@ const RESULTS = ['PASS', 'FAIL', 'NOT_RUN', 'PRE_EXISTING', 'N/A'];
 
 // Pure: one `**[High · introduced]** `path:line` — …` list line → finding, null for anything else.
 export function parseFinding(line) {
-  const m = String(line).match(/^\s*(?:\d+\.|-)\s+\*\*\[([^\]]+)\]\*\*\s*`?([^`\s]+?)(?::(\d+))?`?\s+[—-]/);
+  const m = String(line).match(/^\s*(?:\d+\.|-)\s+\*\*\[([^\]]+)\]\*\*\s*`?([^`\s]+?)(?::(\d+)(?:-\d+)?)?`?\s+[—-]/);
   if (!m) return null;
   const [severity, origin, ...flags] = m[1].split('·').map((s) => s.trim().toLowerCase());
   return { severity, origin: origin ?? null, nit: flags.includes('nit'), path: m[2], line: m[3] ? Number(m[3]) : null };
@@ -36,7 +36,7 @@ export function parseReport(body) {
   const findings = (title) => section(body, title).split('\n').map(parseFinding).filter(Boolean);
   const evidence = Object.fromEntries(RESULTS.map((r) => [r, 0]));
   for (const row of section(body, 'Evidence').split('\n')) {
-    const cells = row.split('|').map((c) => c.trim());
+    const cells = row.split(/(?<!\\)\|/).map((c) => c.trim()); // `\|` is a pipe inside a cell, not a delimiter
     const result = cells.length >= 5 ? RESULTS.find((r) => cells[4] === r || cells[4].startsWith(`${r} `) || cells[4].startsWith(`${r}—`)) : null;
     if (result) evidence[result] += 1;
   }

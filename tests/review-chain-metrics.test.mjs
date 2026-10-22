@@ -226,3 +226,12 @@ test('buildRecord: a finding on a renamed file counts as touched', () => {
   });
   assert.equal(rec.rounds[0].blocking_touched, 1);
 });
+
+test('parseReport: an escaped pipe in an Evidence command does not shift the Result cell', () => {
+  const body = report('DONE', 'abc1234').replace('**Risk assessment**', '| Tests | `npm test \\| tee out` | `ci.yml` | PASS — 3/3 |\n\n**Risk assessment**');
+  assert.equal(parseReport(body).evidence.PASS, 1);
+});
+
+test('parseFinding: a line range keeps the bare path and its first line', () => {
+  assert.deepEqual(parseFinding('1. **[High · introduced]** `src/a.mjs:10-20` — range'), { severity: 'high', origin: 'introduced', nit: false, path: 'src/a.mjs', line: 10 });
+});
