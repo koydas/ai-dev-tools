@@ -1,5 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { buildThreads, buildThreadsFromRest } from '../scripts/gh-get-pr-threads.mjs';
 
 const comment = (id, login, body) => ({ databaseId: id, author: { login }, body, createdAt: `2026-01-0${id}T00:00:00Z` });
@@ -95,4 +97,17 @@ test('buildThreadsFromRest: deleted comments and authors, non-boolean resolved, 
   assert.deepEqual([threads[0].id, threads[0].author, threads[0].resolved, threads[0].line], [12, null, null, 5]);
   assert.throws(() => buildThreadsFromRest({}), /array of review comments/);
   assert.deepEqual(buildThreadsFromRest([], CCR), []);
+});
+
+// Unknown option → `Error …` + Usage on stderr, exit 1, before any network call.
+function unknownFlagCli(script, args) {
+  const r = spawnSync(process.execPath, [fileURLToPath(new URL(`../scripts/${script}.mjs`, import.meta.url)), ...args], { encoding: 'utf8', timeout: 10_000 });
+  assert.equal(r.status, 1);
+  assert.equal(r.stdout, '');
+  assert.match(r.stderr, /^Error: unknown option --bogus\nUsage: node scripts\/gh-get-pr-threads\.mjs/);
+}
+
+test('gh-get-pr-threads CLI: unknown option is rejected before any network call', () => {
+  unknownFlagCli('gh-get-pr-threads', ['1', '--bogus']);
+  unknownFlagCli('gh-get-pr-threads', ['--bogus']);
 });

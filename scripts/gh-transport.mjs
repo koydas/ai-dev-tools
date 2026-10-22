@@ -30,6 +30,25 @@ export function withGraphqlFallback(graphql, rest, log = (line) => console.error
   }
 }
 
+// Pure: the first option in `args` that is neither a value option (its next token is consumed) nor a
+// boolean option, or null. Any token starting with `-` counts as an option.
+export function findUnknownFlag(args, { value = [], bool = [] } = {}) {
+  for (let i = 0; i < args.length; i += 1) {
+    const a = String(args[i]);
+    if (value.includes(a)) i += 1;
+    else if (!bool.includes(a) && a.startsWith('-')) return a;
+  }
+  return null;
+}
+
+// CLI guard: unknown option → `Error …` + usage on stderr, exit 1 (before any network call).
+export function exitOnUnknownFlag(args, spec, usage) {
+  const flag = findUnknownFlag(args, spec);
+  if (!flag) return;
+  console.error(`Error: unknown option ${flag}\n${usage}`);
+  process.exit(1);
+}
+
 // Pure: owner/repo from a GitHub remote URL (https or ssh), null otherwise.
 export function repoFromRemoteUrl(url) {
   const m = String(url ?? '').trim().match(/github\.com[/:]([A-Za-z0-9-]+\/[A-Za-z0-9._-]+?)(?:\.git)?\/?$/);

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mapRestPrActivity, repoFromRemoteUrl, withGraphqlFallback, shouldSkipGraphql, resolveRepo } from '../scripts/gh-transport.mjs';
+import { mapRestPrActivity, repoFromRemoteUrl, withGraphqlFallback, shouldSkipGraphql, resolveRepo, findUnknownFlag } from '../scripts/gh-transport.mjs';
 
 test('mapRestPrActivity: REST reviews, requested reviewers and issue comments → gh pr view shapes', () => {
   const out = mapRestPrActivity({
@@ -85,4 +85,14 @@ test('withGraphqlFallback: cloud session → GraphQL not attempted, no log, REST
 
 test('resolveRepo: an explicit repo is returned without any lookup', () => {
   assert.equal(resolveRepo('o/r'), 'o/r');
+});
+
+test('findUnknownFlag: known value/bool options and positionals pass; the first unknown option is returned', () => {
+  const spec = { value: ['--repo', '--branch'], bool: ['--json'] };
+  assert.equal(findUnknownFlag(['42', '--repo', 'o/r', '--json'], spec), null);
+  assert.equal(findUnknownFlag([], spec), null);
+  assert.equal(findUnknownFlag(['42', '--bogus'], spec), '--bogus');
+  assert.equal(findUnknownFlag(['--repo', 'o/r', '-x', '--other'], spec), '-x');
+  assert.equal(findUnknownFlag(['--repo', '--bogus'], spec), null); // consumed as the value of --repo
+  assert.equal(findUnknownFlag(['--bogus']), '--bogus');
 });

@@ -1,5 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { mapRestIssue } from '../scripts/gh-get-issue.mjs';
 import { mapRestIssueList } from '../scripts/gh-my-issues.mjs';
 
@@ -39,4 +41,17 @@ test('mapRestIssueList: pull requests dropped, limit applied, gh issue list fiel
   assert.deepEqual(mapRestIssueList(items, 30).map((i) => i.number), [1, 3, 4]);
   assert.deepEqual(Object.keys(mapRestIssueList(items, 1)[0]).sort(),
     ['assignees', 'author', 'createdAt', 'labels', 'number', 'state', 'title', 'updatedAt', 'url']);
+});
+
+// Unknown option → `Error …` + Usage on stderr, exit 1, before any network call.
+function unknownFlagCli(script, args) {
+  const r = spawnSync(process.execPath, [fileURLToPath(new URL(`../scripts/${script}.mjs`, import.meta.url)), ...args], { encoding: 'utf8', timeout: 10_000 });
+  assert.equal(r.status, 1);
+  assert.equal(r.stdout, '');
+  assert.match(r.stderr, /^Error: unknown option --bogus\nUsage: node scripts\/gh-get-issue\.mjs/);
+}
+
+test('gh-get-issue CLI: unknown option is rejected before any network call', () => {
+  unknownFlagCli('gh-get-issue', ['1', '--bogus']);
+  unknownFlagCli('gh-get-issue', ['--bogus']);
 });

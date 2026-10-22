@@ -9,7 +9,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { gh, restList, withGraphqlFallback, resolveRepo, mapRestPrActivity } from './gh-transport.mjs';
+import { gh, restList, withGraphqlFallback, resolveRepo, mapRestPrActivity, exitOnUnknownFlag } from './gh-transport.mjs';
 
 const USAGE = 'Usage: node scripts/gh-get-pr.mjs [<pr-ref> | --branch <branch>] [--repo <owner/repo>]';
 const REPO = '[A-Za-z0-9-]+/[A-Za-z0-9._-]+';
@@ -117,6 +117,7 @@ export function getPrDiff(prNumber, repo) {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
+  exitOnUnknownFlag(args, { value: ['--branch', '--repo'] }, USAGE);
   const branchIdx = args.indexOf('--branch');
   const repoIdx = args.indexOf('--repo');
   const repo = repoIdx !== -1 ? args[repoIdx + 1] : undefined;

@@ -8,7 +8,7 @@
 // The output's `source` says which: `graphql` | `rest+ccr` | `rest`. Pattern: ADR-011 (scripts/gh-transport.mjs).
 
 import { fileURLToPath } from 'node:url';
-import { gh, restList, withGraphqlFallback, resolveRepo, mapRestPrActivity } from './gh-transport.mjs';
+import { gh, restList, withGraphqlFallback, resolveRepo, mapRestPrActivity, exitOnUnknownFlag } from './gh-transport.mjs';
 
 // The REST endpoint `pulls/{n}/comments` carries no resolution state; only the GraphQL
 // `reviewThreads` connection exposes `isResolved` / `isOutdated`. Replies beyond the first 100
@@ -144,14 +144,17 @@ export function getPrThreads(prNumber, repo, prefetched = {}) {
   return withGraphqlFallback(() => getPrThreadsGraphql(prNumber, ownerRepo), () => getPrThreadsRest(prNumber, ownerRepo, prefetched));
 }
 
+const USAGE = 'Usage: node scripts/gh-get-pr-threads.mjs <pr-number> [--repo <owner/repo>]';
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
+  exitOnUnknownFlag(args, { value: ['--repo'] }, USAGE);
   const number = args.find(a => /^\d+$/.test(a));
   const repoIdx = args.indexOf('--repo');
   const repo = repoIdx !== -1 ? args[repoIdx + 1] : undefined;
 
   if (!number) {
-    console.error('Usage: node scripts/gh-get-pr-threads.mjs <pr-number> [--repo <owner/repo>]');
+    console.error(USAGE);
     process.exit(1);
   }
 
