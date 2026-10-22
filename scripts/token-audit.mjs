@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Aggregate Claude Code token usage from JSONL session files
-// Usage: node scripts/token-audit.mjs [--days <n>] [--src <path>]
+// Usage: node scripts/token-audit.mjs [--days <n>] [--src <path>] [--include-cache] [--json]
+// Totals, model/day breakdowns and the session ranking count input + output tokens; --include-cache adds cache read/write.
 // Node ≥ 20, no external dependencies
 
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
@@ -11,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 const DEFAULT_DAYS = 30;
 const PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 
-export function auditTokens({ days = DEFAULT_DAYS, src = PROJECTS_DIR } = {}) {
+export function auditTokens({ days = DEFAULT_DAYS, src = PROJECTS_DIR, includeCache = false } = {}) {
   const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
   const sessions = collectSessions(src, cutoff);
 
@@ -36,19 +37,21 @@ export function auditTokens({ days = DEFAULT_DAYS, src = PROJECTS_DIR } = {}) {
       const cacheWrite = usage.cache_creation_input_tokens ?? 0;
       const model = entry?.message?.model ?? entry?.model ?? 'unknown';
 
+      const counted = input + output + (includeCache ? cacheRead + cacheWrite : 0);
+
       totals.input += input;
       totals.output += output;
       totals.cacheRead += cacheRead;
       totals.cacheWrite += cacheWrite;
-      sessionTokens += input + output;
+      sessionTokens += counted;
 
       byModel[model] = byModel[model] ?? { input: 0, output: 0, total: 0 };
       byModel[model].input += input;
       byModel[model].output += output;
-      byModel[model].total += input + output;
+      byModel[model].total += counted;
 
       const day = new Date(entry.timestamp ?? session.mtime).toISOString().slice(0, 10);
-      byDay[day] = (byDay[day] ?? 0) + input + output;
+      byDay[day] = (byDay[day] ?? 0) + counted;
     }
     if (sessionTokens > 0) {
       topSessions.push({ project: session.project, file: session.file, tokens: sessionTokens, date: session.date });
@@ -57,7 +60,7 @@ export function auditTokens({ days = DEFAULT_DAYS, src = PROJECTS_DIR } = {}) {
 
   topSessions.sort((a, b) => b.tokens - a.tokens);
 
-  return { days, totals, byModel, byDay, topSessions: topSessions.slice(0, 10) };
+  return { days, ...(includeCache && { includeCache }), totals, byModel, byDay, topSessions: topSessions.slice(0, 10) };
 }
 
 function collectSessions(projectsDir, cutoff) {
@@ -87,12 +90,12 @@ function collectSessions(projectsDir, cutoff) {
 }
 
 function formatReport(result) {
-  const { days, totals, byModel, byDay, topSessions } = result;
-  const total = totals.input + totals.output;
+  const { days, totals, byModel, topSessions, includeCache } = result;
+  const total = totals.input + totals.output + (includeCache ? totals.cacheRead + totals.cacheWrite : 0);
   const avgPerDay = days > 0 ? Math.round(total / days) : 0;
 
   console.log(`Token audit — last ${days} days\n`);
-  console.log(`Total tokens:  ${fmt(total)}`);
+  console.log(`Total tokens ${includeCache ? '(incl. cache)' : '(excl. cache)'}: ${fmt(total)}`);
   console.log(`  Input:         ${fmt(totals.input)}`);
   console.log(`  Output:        ${fmt(totals.output)}`);
   console.log(`  Cache read:    ${fmt(totals.cacheRead)}`);
@@ -108,7 +111,7 @@ function formatReport(result) {
   }
 
   if (topSessions.length > 0) {
-    console.log('\nTop sessions by token usage:');
+    console.log(`\nTop sessions by token usage ${includeCache ? '(incl. cache)' : '(excl. cache)'}:`);
     for (const s of topSessions) {
       console.log(`  ${s.date}  ${s.project.slice(0, 20).padEnd(20)}  ${fmt(s.tokens)} tokens`);
     }
@@ -127,6 +130,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const options = {
     days: daysIdx !== -1 ? parseInt(args[daysIdx + 1], 10) : DEFAULT_DAYS,
     src: srcIdx !== -1 ? args[srcIdx + 1] : PROJECTS_DIR,
+    includeCache: args.includes('--include-cache'),
   };
 
   const result = auditTokens(options);

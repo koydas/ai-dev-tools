@@ -77,3 +77,9 @@ Mesures du 2026-10-22, même session cloud, harnais `spawnSync` (temps mur, 5 ru
 ## Reproduce
 
 Harness: spawn `node scripts/<name>.mjs` with `spawnSync`, record `status`, wall time, first bytes of stdout/stderr. Not committed (scratch).
+
+## Suites — lot B (branche `claude/ai-dev-tools-diagnostics-output`)
+
+- **O5 — corrigé.** Le total `token-audit` porte le libellé `(excl. cache)` (« hors cache »; libellé en anglais, comme le reste de la sortie du script). `--include-cache` ajoute cache read/write au total, au classement des sessions et, pour garder les pourcentages cohérents avec le total, aux ventilations par modèle et par jour; le libellé devient `(incl. cache)`. Défaut inchangé hors libellé (JSON identique, sans clé `includeCache`). Cette session, `--days 7` : 50 075 tokens hors cache, 5 506 570 avec. La commande `/token-audit` ne passe pas le flag (commande non modifiée).
+- **O6 — corrigé.** `cannot reach <url>: fetch failed (cause: ENOTFOUND)` : `err.cause.code`, sinon première ligne de `err.cause.message` (≤ 120 caractères); aucun contenu de réponse n'est lu. Vérifié sur l'URL par défaut dans cette session : `ENOTFOUND` (le DNS du sandbox ne résout pas `koydas.github.io`).
+

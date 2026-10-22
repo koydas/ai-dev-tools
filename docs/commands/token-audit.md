@@ -20,12 +20,16 @@ Answers "how much am I spending on Claude Code and on what?" by parsing session 
 2. Aggregates token counts within the requested date window
 3. Presents a usage report
 
+## Cache tokens
+
+The total, the model and day breakdowns and the session ranking count input + output tokens only; cache read/write are listed separately. The script (`scripts/token-audit.mjs`) takes `--include-cache` to add them to the total and to the ranking (labels then read `(incl. cache)`). The command does not pass it.
+
 ## Output
 
 ```
 Token audit — last 30 days
 
-Total tokens:  1,240,500
+Total tokens (excl. cache): 1,240,500
   Input:         840,200
   Output:        380,100
   Cache read:     20,200
