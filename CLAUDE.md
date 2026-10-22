@@ -122,6 +122,7 @@ node --test
 | `CONTRIBUTING.md` | Architectural rules for adding agents and commands |
 | `docs/adr/` | All architecture decisions with rationale |
 | `docs/commands/` | Reference documentation for each slash command |
+| `docs/mcp-server.md` | MCP server reference — setup, tools, prompts, resources, security model |
 
 ## Auto-sync
 
