@@ -1,5 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { classifyComment, authorIndex, selectFeedback } from '../scripts/gh-get-pr-feedback.mjs';
 
 const REPORT = '### Status\nNEEDS_REVIEW — 1 blocking\n\n### Review\n\n**Evidence**\n| Check | … |\n\n### Handoff\n…';
@@ -128,4 +130,17 @@ test('selectFeedback: no report → null; invalid input fails loudly', () => {
   assert.equal(selectFeedback({ threads: [] }, new Map()).latestPrReview, null);
   assert.throws(() => selectFeedback({}, new Map()), /threads/);
   assert.throws(() => selectFeedback({ threads: [] }, {}), /author index/);
+});
+
+// Unknown option → `Error …` + Usage on stderr, exit 1, before any network call.
+function unknownFlagCli(script, args) {
+  const r = spawnSync(process.execPath, [fileURLToPath(new URL(`../scripts/${script}.mjs`, import.meta.url)), ...args], { encoding: 'utf8', timeout: 10_000 });
+  assert.equal(r.status, 1);
+  assert.equal(r.stdout, '');
+  assert.match(r.stderr, /^Error: unknown option --bogus\nUsage: node scripts\/gh-get-pr-feedback\.mjs/);
+}
+
+test('gh-get-pr-feedback CLI: unknown option is rejected before any network call', () => {
+  unknownFlagCli('gh-get-pr-feedback', ['1', '--bogus']);
+  unknownFlagCli('gh-get-pr-feedback', ['--bogus']);
 });

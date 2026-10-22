@@ -10,7 +10,7 @@
 // and reused by the REST fallback of gh-get-pr-threads.mjs.
 
 import { fileURLToPath } from 'node:url';
-import { restList, resolveRepo } from './gh-transport.mjs';
+import { restList, resolveRepo, exitOnUnknownFlag } from './gh-transport.mjs';
 import { getPrThreads } from './gh-get-pr-threads.mjs';
 
 // Same trust rule as autonomous-dev-loop's isTrustedReviewComment (its ADR-0028): anyone can
@@ -126,14 +126,17 @@ export function getPrFeedback(prNumber, repo) {
   return selectFeedback(activity, authorIndex(Object.values(prefetched).flat()));
 }
 
+const USAGE = 'Usage: node scripts/gh-get-pr-feedback.mjs <pr-number> [--repo <owner/repo>]';
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
+  exitOnUnknownFlag(args, { value: ['--repo'] }, USAGE);
   const number = args.find((a) => /^\d+$/.test(a));
   const repoIdx = args.indexOf('--repo');
   const repo = repoIdx !== -1 ? args[repoIdx + 1] : undefined;
 
   if (!number) {
-    console.error('Usage: node scripts/gh-get-pr-feedback.mjs <pr-number> [--repo <owner/repo>]');
+    console.error(USAGE);
     process.exit(1);
   }
 
