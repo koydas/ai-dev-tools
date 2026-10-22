@@ -17,15 +17,66 @@ An interactive issue-to-patch pipeline for Claude Code: you type one command, a 
 
 Each of these is a named pattern documented in [`agent-patterns`](https://github.com/koydas/agent-patterns): `router`, `sequential-pipeline`, `typed-evidence-chain`, `critic-pair`, `tool-grounded-review`, `checkpoint-resume`, `human-gate`.
 
-**Try it** (Node ≥ 20, Claude Code, authenticated `gh`):
+**New here?** → [Get Started](#get-started).
+
+---
+
+## Get Started
+
+From zero to a first reviewed patch, about five minutes.
+
+### 1. Prerequisites
+
+| | Check |
+|---|---|
+| Node ≥ 20 | `node --version` |
+| Git | `git --version` |
+| [GitHub CLI](https://cli.github.com/), authenticated | `gh auth status` |
+| [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (Anthropic account with Claude Code access) | `claude --version` |
+
+### 2. Install
 
 ```bash
 git clone https://github.com/koydas/ai-dev-tools ~/dev/ai-dev-tools
+node ~/dev/ai-dev-tools/scripts/onboarding.mjs --dry-run   # optional: shows what it would change
 node ~/dev/ai-dev-tools/scripts/onboarding.mjs
-# then, in Claude Code inside any repo:  /issue-code-generation <issue-number>
 ```
 
-Full setup: [Setup](#setup).
+Onboarding copies the workspace `CLAUDE.md` files into `~/dev`, links `rules/` into `~/.claude/rules/ai-dev-tools/`, copies the commands and agents into `~/.claude/`, and creates a git-ignored `.env` template in the clone. Then open that `.env` and set `gh_token` (scopes `repo, read:org`).
+
+### 3. Run it on a real issue
+
+In a clone of any GitHub repository, start Claude Code and type:
+
+```
+/issue-code-generation 42
+```
+
+`42` is an open issue of that repository. The agents classify the issue, write the patch **uncommitted** in your working tree, run the repo's own tests, lint and type-check, and stop. You get an Evidence table and a status: `DONE` (every check passed) or `NEEDS_REVIEW` (something needs your judgement — the pipeline does not continue past it). Add `--strict` for an adversarial pass before review. If a run is interrupted, `/resume 42 --repo owner/repo` restarts from the first missing step.
+
+You review the diff, commit and merge. Nothing is pushed for you.
+
+To review someone's pull request instead: `/pr-review 17` writes a report to `~/dev/pr-reviews/` and posts it on the PR.
+
+### 4. Check the install
+
+| Check | Expected |
+|---|---|
+| `ls ~/.claude/commands` | `issue-code-generation.md`, `pr-review.md`, … |
+| `ls ~/.claude/agents` | `pr-analyst.md`, `code-reviewer.md`, … |
+| `node --test` in the clone | all tests pass |
+
+After pulling new versions: `node ~/dev/ai-dev-tools/scripts/sync-claude.mjs`.
+
+### 5. Other ways to use it
+
+| You want to… | Go to |
+|---|---|
+| Use the commands in a repo without onboarding, or in a Claude Code cloud session | [Use from another repository](#use-from-another-repository) |
+| Call the GitHub scripts, commands and agents from Codex, Cursor, Claude Desktop or any MCP host | [Use from another MCP host](#use-from-another-mcp-host) · [MCP server reference](docs/mcp-server.md) |
+| Understand a command in depth | [`docs/commands/`](docs/commands/) |
+| Understand why it is built this way | [`docs/adr/`](docs/adr/) |
+| Add an agent, command, rule, script or MCP tool | [Extending](#extending) |
 
 ---
 
@@ -183,7 +234,8 @@ ai-dev-tools/
 ├── prompts/      Standalone prompt templates for manual use
 ├── docs/
 │   ├── adr/          Architecture Decision Records
-│   └── commands/     Reference docs for each slash command
+│   ├── commands/     Reference docs for each slash command
+│   └── mcp-server.md MCP server reference
 └── workspace/    Config files deployed to your dev root on setup
     ├── CLAUDE.md            Workspace orchestrator
     └── .claude/CLAUDE.md    Execution rules
@@ -237,13 +289,15 @@ git clone --depth 1 https://github.com/koydas/ai-dev-tools "$HOME/ai-dev-tools" 
 
 ### Use from another MCP host
 
-`scripts/mcp-server.mjs` exposes the toolbox over MCP ([ADR-016](docs/adr/ADR-016-mcp-server.md)): stdio, zero dependency, needs `gh` authenticated where it runs.
+`scripts/mcp-server.mjs` exposes the toolbox over MCP ([ADR-016](docs/adr/ADR-016-mcp-server.md)): stdio, zero dependency, needs `gh` authenticated where the host starts it. Full reference — tools and arguments, prompts, resources, security model, troubleshooting — in [`docs/mcp-server.md`](docs/mcp-server.md).
+
+```bash
+claude mcp add ai-dev-tools -- node /abs/path/to/ai-dev-tools/scripts/mcp-server.mjs   # Claude Code
+```
 
 ```json
 { "mcpServers": { "ai-dev-tools": { "command": "node", "args": ["/abs/path/to/ai-dev-tools/scripts/mcp-server.mjs"] } } }
 ```
-
-Claude Code: `claude mcp add ai-dev-tools -- node /abs/path/to/ai-dev-tools/scripts/mcp-server.mjs`.
 
 | Surface | Content |
 |---|---|
