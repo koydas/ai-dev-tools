@@ -10,6 +10,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+const USAGE = 'Usage: node scripts/checkpoint.mjs write|read|list --repo <owner/repo> <issueId> [step]';
 const CHECKPOINTS_ROOT = join(homedir(), 'dev', 'checkpoints');
 
 // Allowlist patterns — reject anything containing path separators or traversal sequences.
@@ -90,30 +91,35 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const missing = names.filter(n => !vals[n]);
     if (missing.length) {
       console.error(`Missing required argument(s): ${missing.join(', ')}`);
-      console.error('Usage: node scripts/checkpoint.mjs write|read|list --repo <owner/repo> <issueId> [step]');
+      console.error(USAGE);
       process.exit(1);
     }
   }
 
-  if (cmd === 'write') {
-    requireArgs('repo', 'issueId', 'step');
-    const content = await readStdin();
-    const path = writeCheckpoint(repo, issueId, step, content);
-    console.log(`Checkpoint written: ${path}`);
-  } else if (cmd === 'read') {
-    requireArgs('repo', 'issueId', 'step');
-    const content = readCheckpoint(repo, issueId, step);
-    if (content === null) {
-      console.error(`Checkpoint not found: ${repo}/${issueId}/${step}`);
+  try {
+    if (cmd === 'write') {
+      requireArgs('repo', 'issueId', 'step');
+      const content = await readStdin();
+      const path = writeCheckpoint(repo, issueId, step, content);
+      console.log(`Checkpoint written: ${path}`);
+    } else if (cmd === 'read') {
+      requireArgs('repo', 'issueId', 'step');
+      const content = readCheckpoint(repo, issueId, step);
+      if (content === null) {
+        console.error(`Checkpoint not found: ${repo}/${issueId}/${step}`);
+        process.exit(1);
+      }
+      process.stdout.write(content);
+    } else if (cmd === 'list') {
+      requireArgs('repo', 'issueId');
+      const steps = listCheckpoints(repo, issueId);
+      console.log(steps.length ? steps.join('\n') : '(none)');
+    } else {
+      console.error(USAGE);
       process.exit(1);
     }
-    process.stdout.write(content);
-  } else if (cmd === 'list') {
-    requireArgs('repo', 'issueId');
-    const steps = listCheckpoints(repo, issueId);
-    console.log(steps.length ? steps.join('\n') : '(none)');
-  } else {
-    console.error('Usage: node scripts/checkpoint.mjs write|read|list --repo <owner/repo> <issueId> [step]');
+  } catch (err) {
+    console.error(`Error: ${err.message}\n${USAGE}`);
     process.exit(1);
   }
 }
