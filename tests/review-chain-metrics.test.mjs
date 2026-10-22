@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { asMember, parseFinding, parseReport, summarizeChecks, afterCount, buildRecord, aggregate } from '../scripts/review-chain-metrics.mjs';
+import { asMember, changedFiles, COMPARE_FILE_LIMIT, parseFinding, parseReport, summarizeChecks, afterCount, buildRecord, aggregate } from '../scripts/review-chain-metrics.mjs';
 
 const SCRIPT = fileURLToPath(new URL('../scripts/review-chain-metrics.mjs', import.meta.url));
 
@@ -203,4 +203,26 @@ test('buildRecord: generated and bot threads on a trusted account are not human 
     commits,
   });
   assert.deepEqual([rec.human_threads_after_review, rec.human_threads_beyond_review], [1, 1]);
+});
+
+test('changedFiles: includes previous names of renamed files', () => {
+  assert.deepEqual(changedFiles({ files: [{ filename: 'src/new.mjs', previous_filename: 'src/old.mjs' }, { filename: 'b.md' }] }), ['src/new.mjs', 'src/old.mjs', 'b.md']);
+});
+
+test('changedFiles: possibly truncated (>= 300) or malformed response → null, below the limit → list', () => {
+  const files = (n) => Array.from({ length: n }, (_, i) => ({ filename: `f${i}` }));
+  assert.equal(changedFiles({ files: files(COMPARE_FILE_LIMIT) }), null);
+  assert.equal(changedFiles({ files: files(COMPARE_FILE_LIMIT - 1) }).length, COMPARE_FILE_LIMIT - 1);
+  assert.equal(changedFiles({}), null);
+  assert.equal(changedFiles(null), null);
+});
+
+test('buildRecord: a finding on a renamed file counts as touched', () => {
+  const rec = buildRecord({
+    pr: prInfo,
+    comments: [{ id: 1, ...trustedUser, createdAt: '2026-10-01T01:00:00Z', body: report('NEEDS_REVIEW', 'aaa1111', { blocking: [B1] }) }],
+    commits,
+    filesSince: { aaa1111: changedFiles({ files: [{ filename: 'src/renamed.mjs', previous_filename: 'src/a.mjs' }] }) },
+  });
+  assert.equal(rec.rounds[0].blocking_touched, 1);
 });

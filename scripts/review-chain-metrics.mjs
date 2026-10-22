@@ -57,6 +57,17 @@ export function summarizeChecks(runs) {
 
 const sameSha = (a, b) => Boolean(a && b) && (a.startsWith(b) || b.startsWith(a));
 
+// The compare endpoint lists at most 300 files for the whole comparison, whatever the pagination.
+export const COMPARE_FILE_LIMIT = 300;
+
+// Pure: compare response → paths a finding may cite (new and, for renames, previous names);
+// null (unknown) when the list may be truncated.
+export function changedFiles(cmp) {
+  const files = cmp?.files;
+  if (!Array.isArray(files) || files.length >= COMPARE_FILE_LIMIT) return null;
+  return files.flatMap((f) => [f.filename, f.previous_filename]).filter(Boolean);
+}
+
 // Pure: commits pushed after `sha` (null when `sha` is not among the PR's commits).
 export function afterCount(commits, sha) {
   const i = sha ? commits.findIndex((c) => sameSha(c.sha, sha)) : -1;
@@ -164,7 +175,7 @@ export function collectPr(number, repo) {
     try {
       const full = commits.find((c) => sameSha(c.sha, sha))?.sha ?? sha;
       const cmp = JSON.parse(gh(['api', `${base}/compare/${full}...${pr.head.sha}`]));
-      filesSince[sha] = (cmp.files ?? []).map((f) => f.filename);
+      filesSince[sha] = changedFiles(cmp);
     } catch { filesSince[sha] = null; }
   }
   const checks = {};
