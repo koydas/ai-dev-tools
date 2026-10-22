@@ -15,6 +15,8 @@ export const MAX_BYTES = 2 * 1024 * 1024;
 export const FETCH_TIMEOUT_MS = 15000;
 export const EVIDENCE_SHOWN = 5;
 export const SUMMARY_MAX = 200;
+export const MAX_REDIRECTS = 5;
+const REDIRECTS = [301, 302, 303, 307, 308];
 
 const USAGE = 'Usage: node scripts/loop-insights.mjs [--source <https-url|path>] [--finding <key>]';
 const STATUSES = ['critical', 'warning', 'ok', 'no_data'];
@@ -204,14 +206,27 @@ export async function readSource(source, { fetchImpl = globalThis.fetch, read = 
     if (size > maxBytes) throw new Error(`export is ${size} bytes, over the cap of ${maxBytes}`);
     return read(target.path, 'utf8');
   }
+  // Redirects are followed by hand: each destination is checked before it is requested, so an https → http → https
+  // chain never makes an unencrypted request (a check on the final response.url alone would let it through).
+  const signal = AbortSignal.timeout(timeoutMs);
+  let url = target.url;
   let response;
-  try {
-    response = await fetchImpl(target.url, { signal: AbortSignal.timeout(timeoutMs), headers: { accept: 'application/json' } });
-  } catch (err) {
-    throw new Error(`cannot reach ${target.url}: ${err.name === 'TimeoutError' ? `no answer in ${timeoutMs} ms` : err.message}`);
+  for (let hop = 0; ; hop += 1) {
+    try {
+      response = await fetchImpl(url, { signal, redirect: 'manual', headers: { accept: 'application/json' } });
+    } catch (err) {
+      throw new Error(`cannot reach ${url}: ${err.name === 'TimeoutError' ? `no answer in ${timeoutMs} ms` : err.message}`);
+    }
+    if (!REDIRECTS.includes(response.status)) break;
+    if (hop >= MAX_REDIRECTS) throw new Error(`refused: more than ${MAX_REDIRECTS} redirects from ${target.url}`);
+    const location = response.headers.get('location');
+    if (!location) throw new Error(`cannot read ${url}: HTTP ${response.status} without a Location`);
+    let next;
+    try { next = new URL(location, url); } catch { throw new Error(`refused: redirect to an invalid location from ${url}`); }
+    if (next.protocol !== 'https:') throw new Error(`refused: ${url} redirects away from https (${next.protocol})`);
+    url = next.href;
   }
-  if (!String(response.url || target.url).startsWith('https://')) throw new Error('refused: the request was redirected away from https');
-  if (!response.ok) throw new Error(`cannot read ${target.url}: HTTP ${response.status}`);
+  if (!response.ok) throw new Error(`cannot read ${url}: HTTP ${response.status}`);
   return readBounded(response, maxBytes);
 }
 

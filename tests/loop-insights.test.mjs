@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import {
   parseExport, selectFindings, classifySource, readSource, parseArgs,
-  SUPPORTED_SCHEMA_VERSION, EVIDENCE_SHOWN, SUMMARY_MAX, MAX_BYTES,
+  SUPPORTED_SCHEMA_VERSION, EVIDENCE_SHOWN, SUMMARY_MAX, MAX_BYTES, MAX_REDIRECTS,
 } from '../scripts/loop-insights.mjs';
 import { loadMetaLoopConfig } from '../scripts/config.mjs';
 
@@ -151,9 +151,9 @@ test('classifySource: https and a plain path only; no other scheme, no flag, no 
   for (const bad of ['', '  ', undefined, null, 5]) assert.throws(() => classifySource(bad), /non-empty string/);
 });
 
-const response = (body, { ok = true, status = 200, url = 'https://example.org/f.json', length } = {}) => ({
+const response = (body, { ok = true, status = 200, url = 'https://example.org/f.json', length, location } = {}) => ({
   ok, status, url,
-  headers: { get: (h) => (h === 'content-length' ? length ?? null : null) },
+  headers: { get: (h) => (h === 'content-length' ? length ?? null : h === 'location' ? location ?? null : null) },
   body: (async function* () { for (const part of [].concat(body)) yield Buffer.from(part); })(),
 });
 
@@ -164,14 +164,36 @@ test('readSource over https: reads the text, sends no credential, refuses redire
   assert.equal(seen.url, 'https://example.org/f.json');
   assert.deepEqual(Object.keys(seen.init.headers), ['accept'], 'no token, no cookie');
   assert.ok(seen.init.signal instanceof AbortSignal);
-  await assert.rejects(readSource('https://example.org/f.json', { fetchImpl: async () => response('{}', { url: 'http://elsewhere/f.json' }) }), /redirected away from https/);
   await assert.rejects(readSource('https://example.org/f.json', { fetchImpl: async () => response('', { ok: false, status: 404 }) }), /HTTP 404/);
   await assert.rejects(readSource('https://example.org/f.json', { fetchImpl: async () => { throw new TypeError('fetch failed'); } }), /cannot reach https:\/\/example.org\/f.json: fetch failed/);
   await assert.rejects(readSource('https://example.org/f.json', { fetchImpl: async () => { throw Object.assign(new Error('x'), { name: 'TimeoutError' }); }, timeoutMs: 5 }), /no answer in 5 ms/);
   await assert.rejects(readSource('https://example.org/f.json', { fetchImpl: async () => response('{}', { length: String(MAX_BYTES + 1) }) }), /over the cap/);
   await assert.rejects(readSource('https://example.org/f.json', { maxBytes: 10, fetchImpl: async () => response(['0123456', '789abcd']) }), /over the cap of 10 bytes/);
-  // A response without a url (some stubs) is judged on the requested one.
-  assert.equal(await readSource('https://example.org/f.json', { fetchImpl: async () => ({ ...response('{}'), url: '' }) }), '{}');
+  assert.equal(seen.init.redirect, 'manual', 'redirects are followed by hand');
+});
+
+test('readSource redirects: followed only while every destination is https, and each is checked before it is requested', async () => {
+  const redirect = (location, status = 302) => response('', { status, ok: false, location });
+  // https → https (absolute and relative Location) is followed, with the same bounds on every hop.
+  const requested = [];
+  const chain = { 'https://example.org/f.json': redirect('https://cdn.example.org/a.json', 301), 'https://cdn.example.org/a.json': redirect('/b.json', 307), 'https://cdn.example.org/b.json': response(FIXTURE) };
+  assert.equal(await readSource('https://example.org/f.json', { fetchImpl: async (url) => { requested.push(url); return chain[url]; } }), FIXTURE);
+  assert.deepEqual(requested, ['https://example.org/f.json', 'https://cdn.example.org/a.json', 'https://cdn.example.org/b.json']);
+  // https → http is refused, and https → http → https never requests the http hop.
+  for (const status of [301, 302, 303, 307, 308]) {
+    const seenUrls = [];
+    await assert.rejects(readSource('https://example.org/f.json', { fetchImpl: async (url) => { seenUrls.push(url); return url.startsWith('https://example.org') ? redirect('http://plain.example.org/f.json', status) : response(FIXTURE); } }), /redirects away from https \(http:\)/);
+    assert.deepEqual(seenUrls, ['https://example.org/f.json'], `HTTP ${status}: no request left over https`);
+  }
+  await assert.rejects(readSource('https://example.org/f.json', { fetchImpl: async () => redirect('file:///etc/passwd') }), /redirects away from https \(file:\)/);
+  await assert.rejects(readSource('https://example.org/f.json', { fetchImpl: async () => redirect('http://[bad') }), /invalid location/);
+  await assert.rejects(readSource('https://example.org/f.json', { fetchImpl: async () => ({ ...redirect(null), headers: { get: () => null } }) }), /HTTP 302 without a Location/);
+  // A loop is cut after MAX_REDIRECTS.
+  let calls = 0;
+  await assert.rejects(readSource('https://example.org/f.json', { fetchImpl: async () => { calls += 1; return redirect('https://example.org/f.json'); } }), new RegExp(`more than ${MAX_REDIRECTS} redirects`));
+  assert.equal(calls, MAX_REDIRECTS + 1);
+  // The final answer is judged like a direct one.
+  await assert.rejects(readSource('https://example.org/f.json', { fetchImpl: async (url) => (url.endsWith('/f.json') ? redirect('https://example.org/g.json') : response('', { ok: false, status: 404 })) }), /cannot read https:\/\/example.org\/g.json: HTTP 404/);
 });
 
 test('readSource from a file: reads it, refuses an oversize one, never fetches', async () => {
