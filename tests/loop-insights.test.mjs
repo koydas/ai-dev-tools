@@ -259,3 +259,24 @@ test('CLI: a local export → the agent input on stdout; a bad one → exit 1 wi
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('readSource: a network failure reports the cause code, else the cause message; no cause keeps the plain message', async () => {
+  const failing = (err) => ({ fetchImpl: async () => { throw err; } });
+  const fetchFailed = (cause) => Object.assign(new TypeError('fetch failed'), cause === undefined ? {} : { cause });
+  await assert.rejects(
+    readSource('https://example.org/f.json', failing(fetchFailed(Object.assign(new Error('getaddrinfo ENOTFOUND example.org'), { code: 'ENOTFOUND' })))),
+    { message: 'cannot reach https://example.org/f.json: fetch failed (cause: ENOTFOUND)' },
+  );
+  await assert.rejects(
+    readSource('https://example.org/f.json', failing(fetchFailed(new Error('socket hang up\nsecond line')))),
+    { message: 'cannot reach https://example.org/f.json: fetch failed (cause: socket hang up)' },
+  );
+  await assert.rejects(
+    readSource('https://example.org/f.json', failing(fetchFailed())),
+    { message: 'cannot reach https://example.org/f.json: fetch failed' },
+  );
+  await assert.rejects(
+    readSource('https://example.org/f.json', failing(fetchFailed({}))),
+    { message: 'cannot reach https://example.org/f.json: fetch failed' },
+  );
+});

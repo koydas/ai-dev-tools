@@ -198,6 +198,13 @@ async function readBounded(response, maxBytes) {
   return Buffer.concat(chunks).toString('utf8');
 }
 
+// The network error's own `cause` (code such as ENOTFOUND, else its first message line): undici reports only `fetch failed`.
+// Never reads the response, so no remote content ends up in the message.
+const withCause = (err) => {
+  const cause = err?.cause?.code ?? String(err?.cause?.message ?? '').split('\n')[0].slice(0, 120);
+  return cause ? `${err.message} (cause: ${cause})` : err.message;
+};
+
 /** Read the export text from `source`. `deps` lets tests replace the network and the file system. */
 export async function readSource(source, { fetchImpl = globalThis.fetch, read = readFileSync, stat = statSync, timeoutMs = FETCH_TIMEOUT_MS, maxBytes = MAX_BYTES } = {}) {
   const target = classifySource(source);
@@ -215,7 +222,7 @@ export async function readSource(source, { fetchImpl = globalThis.fetch, read = 
     try {
       response = await fetchImpl(url, { signal, redirect: 'manual', headers: { accept: 'application/json' } });
     } catch (err) {
-      throw new Error(`cannot reach ${url}: ${err.name === 'TimeoutError' ? `no answer in ${timeoutMs} ms` : err.message}`);
+      throw new Error(`cannot reach ${url}: ${err.name === 'TimeoutError' ? `no answer in ${timeoutMs} ms` : withCause(err)}`);
     }
     if (!REDIRECTS.includes(response.status)) break;
     if (hop >= MAX_REDIRECTS) throw new Error(`refused: more than ${MAX_REDIRECTS} redirects from ${target.url}`);
