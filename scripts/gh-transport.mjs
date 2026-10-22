@@ -9,8 +9,18 @@ export const gh = (args) => execFileSync('gh', args, { encoding: 'utf8', stdio: 
 // Every page of a REST list endpoint, flattened.
 export const restList = (endpoint) => JSON.parse(gh(['api', '--paginate', '--slurp', endpoint])).flat();
 
+// Pure: true in a Claude Code cloud session (`CLAUDE_CODE_REMOTE` set to a non-empty value other than
+// `0` / `false`), whose egress proxy answers every GraphQL call with HTTP 403 — the attempt is a wasted
+// round-trip. `AI_DEV_TOOLS_FORCE_GRAPHQL=1` restores the GraphQL-first path.
+export function shouldSkipGraphql(env = process.env) {
+  const isOn = (v) => !['', '0', 'false'].includes(String(v ?? '').trim().toLowerCase());
+  return isOn(env.CLAUDE_CODE_REMOTE) && String(env.AI_DEV_TOOLS_FORCE_GRAPHQL ?? '').trim() !== '1';
+}
+
 // Runs `graphql()`; on any failure, logs one line and returns `rest()` instead. A REST failure propagates.
+// In a cloud session (shouldSkipGraphql) `graphql()` is not attempted and nothing is logged.
 export function withGraphqlFallback(graphql, rest, log = (line) => console.error(line)) {
+  if (shouldSkipGraphql()) return rest();
   try {
     return graphql();
   } catch (err) {
@@ -30,6 +40,7 @@ export function repoFromRemoteUrl(url) {
 export function resolveRepo(repo) {
   if (repo) return repo;
   try {
+    if (shouldSkipGraphql()) throw new Error('GraphQL skipped');
     return gh(['repo', 'view', '--json', 'nameWithOwner', '-q', '.nameWithOwner']).trim();
   } catch { /* gh repo view uses GraphQL: fall back to the origin remote */ }
   let fromRemote = null;
