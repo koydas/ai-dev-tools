@@ -1,10 +1,10 @@
 ---
-description: "Sync ai-dev-tools commands, agents and prompts into ~/.claude"
+description: "Sync ai-dev-tools commands and agents into ~/.claude"
 ---
 
 # /sync-ai-dev-tools
 
-Sync commands, agents, and prompts from this repo to `~/.claude`.
+Sync commands and agents from this repo to `~/.claude`.
 
 ## Steps
 

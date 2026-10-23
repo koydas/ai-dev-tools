@@ -79,7 +79,7 @@ describe('sync-claude', () => {
   test('skips missing source directories silently', () => {
     const src = makeTempDir();
     const dst = makeTempDir();
-    // no commands/, agents/, or prompts/ in src
+    // no commands/ or agents/ in src
 
     const totals = sync(src, dst);
 
@@ -102,19 +102,19 @@ describe('sync-claude', () => {
     cleanup(src, dirname(dst));
   });
 
-  test('syncs agents and prompts directories', () => {
+  test('syncs agents and commands directories', () => {
     const src = makeTempDir();
     const dst = makeTempDir();
     mkdirSync(join(src, 'agents'));
-    mkdirSync(join(src, 'prompts'));
+    mkdirSync(join(src, 'commands'));
     writeFileSync(join(src, 'agents', 'my-agent.md'), '# agent');
-    writeFileSync(join(src, 'prompts', 'my-prompt.md'), '# prompt');
+    writeFileSync(join(src, 'commands', 'my-command.md'), '# command');
 
     const totals = sync(src, dst);
 
     assert.equal(totals.new, 2);
     assert.ok(existsSync(join(dst, 'agents', 'my-agent.md')));
-    assert.ok(existsSync(join(dst, 'prompts', 'my-prompt.md')));
+    assert.ok(existsSync(join(dst, 'commands', 'my-command.md')));
     cleanup(src, dst);
   });
 
@@ -149,12 +149,12 @@ describe('sync-claude', () => {
   test('leaves non-Markdown files byte-identical', () => {
     const src = makeTempDir();
     const dst = makeTempDir();
-    mkdirSync(join(src, 'prompts'));
-    writeFileSync(join(src, 'prompts', 'raw.txt'), '${CLAUDE_PLUGIN_ROOT}');
+    mkdirSync(join(src, 'agents'));
+    writeFileSync(join(src, 'agents', 'raw.txt'), '${CLAUDE_PLUGIN_ROOT}');
 
     sync(src, dst);
 
-    assert.equal(readFileSync(join(dst, 'prompts', 'raw.txt'), 'utf8'), '${CLAUDE_PLUGIN_ROOT}');
+    assert.equal(readFileSync(join(dst, 'agents', 'raw.txt'), 'utf8'), '${CLAUDE_PLUGIN_ROOT}');
     cleanup(src, dst);
   });
 });

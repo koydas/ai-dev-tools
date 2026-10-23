@@ -4,7 +4,7 @@ Incremental sync from the `ai-dev-tools` repo to `~/.claude`.
 
 ## Purpose
 
-Keeps your local Claude Code installation up to date with the latest commands, agents, and prompt templates from this repo. Run this after pulling changes or after creating or modifying any file in `commands/`, `agents/`, or `prompts/`.
+Keeps your local Claude Code installation up to date with the latest commands and agents from this repo. Run this after pulling changes or after creating or modifying any file in `commands/` or `agents/`.
 
 ## Invocation
 
@@ -26,7 +26,6 @@ node ~/dev/ai-dev-tools/scripts/sync-claude.mjs
 |---|---|---|
 | `commands/` | `~/.claude/commands/` | Slash commands available in all Claude Code sessions |
 | `agents/` | `~/.claude/agents/` | Subagent prompt files |
-| `prompts/` | `~/.claude/prompts/` | Standalone prompt templates |
 
 Source directories that do not yet exist are skipped silently.
 
