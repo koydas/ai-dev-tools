@@ -10,7 +10,6 @@ commands/   Slash commands — pipeline definitions only, no logic
 rules/      Stack conventions — Claude Code rules, path-scoped via `paths:` frontmatter
 scripts/    External I/O — GitHub API, file ops (ESM .mjs, Node ≥ 20); mcp-server.mjs exposes them over MCP
 configs/    Versioned non-secret configuration (git.yaml, …)
-prompts/    Standalone prompt templates for manual use
 tests/      Node unit tests (node --test), zero external dependencies
 workspace/  Config files deployed to developer root during onboarding
 docs/adr/      Architecture Decision Records — source of truth for design decisions
@@ -127,4 +126,4 @@ node --test
 
 ## Auto-sync
 
-After creating or modifying any file in `agents/`, `commands/`, or `prompts/`, automatically run `/sync-ai-dev-tools` to deploy the changes to `~/.claude`. `rules/` is linked, not synced.
+After creating or modifying any file in `agents/` or `commands/`, automatically run `/sync-ai-dev-tools` to deploy the changes to `~/.claude`. `rules/` is linked, not synced.

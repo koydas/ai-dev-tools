@@ -165,7 +165,7 @@ Next step and what to pass forward
 | `/token-audit [days]` | — | Audit Claude Code token usage — trends, model breakdown, command adoption |
 | `/loop-insights [--finding <key>] [--source <url\|path>]` | `loop-analyst` | Draft proposals for changes to an autonomous-dev-loop deployment from its published `findings.json` — read-only, nothing posted or created ([ADR-017](docs/adr/ADR-017-loop-insights-command.md)) |
 | `/check-releases` | — | List repos with main changes not yet in a release |
-| `/sync-ai-dev-tools` | — | Sync commands, agents, and prompts from this repo to `~/.claude` |
+| `/sync-ai-dev-tools` | — | Sync commands and agents from this repo to `~/.claude` |
 
 ### Agents
 
@@ -236,7 +236,6 @@ ai-dev-tools/
 ├── commands/     Slash commands — type /name in Claude Code to invoke a pipeline
 ├── rules/        Stack conventions — Claude Code rules, path-scoped
 ├── scripts/      GitHub CLI, token auditing, sync utilities
-├── prompts/      Standalone prompt templates for manual use
 ├── docs/
 │   ├── adr/          Architecture Decision Records
 │   ├── commands/     Reference docs for each slash command
