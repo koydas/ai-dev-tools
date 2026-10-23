@@ -10,7 +10,7 @@ import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const SCRIPTS_DIR = dirname(fileURLToPath(import.meta.url));
-const SYNC_DIRS = ['commands', 'agents', 'prompts'];
+const SYNC_DIRS = ['commands', 'agents'];
 const PLUGIN_ROOT_TOKEN = '${CLAUDE_PLUGIN_ROOT}';
 
 // Commands and agents call scripts as `${CLAUDE_PLUGIN_ROOT}/scripts/...` (ADR-013).
