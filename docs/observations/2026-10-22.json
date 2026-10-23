@@ -11,5 +11,10 @@
     { "id": "O5", "title": "Token audit / cache", "summary": "Totals excluded cache tokens without saying so. Labelled, and --include-cache added.", "status": "fixed", "date": "2026-10-22" },
     { "id": "O6", "title": "loop-insights fetch error", "summary": "An unreachable source reported only 'fetch failed'. The error now carries its cause.", "status": "fixed", "date": "2026-10-22" },
     { "id": "O7", "title": "Thread resolution outside CCR", "summary": "rest+ccr is specific to Claude Code sessions. Not exercised: no non-ccr environment available.", "status": "unverified", "date": "2026-10-22" }
-  ]
+  ],
+  "review_chain": {
+    "generated": "2026-10-22",
+    "scope": "koydas/ai-dev-tools, 30 latest closed PRs",
+    "aggregate": {"prs": 30, "reviewed": 1, "reports": 1, "blocking_touched_rate": 1, "non_blocking_touched_rate": 1, "converged_rate": 0, "mean_rounds": 1, "human_threads_beyond_review": 0, "human_threads_after_review": 0}
+  }
 }
