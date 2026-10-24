@@ -1,6 +1,6 @@
 # Tool-health dashboard
 
-Static pages summarising the latest local observation session: tests, observations by status, review-evidence vocabulary, and — when present — observational review-chain figures. Design records: [ADR-019](adr/ADR-019-tool-health-dashboard.md), [ADR-020](adr/ADR-020-review-chain-on-dashboard.md).
+Static pages summarising the latest local observation session: tests, observations by status, review-evidence vocabulary, and — when present — observational review-chain figures. Design records: [ADR-019](adr/ADR-019-tool-health-dashboard.md), [ADR-020](adr/ADR-020-review-chain-on-dashboard.md), [ADR-021](adr/ADR-021-uniform-dashboards.md) (same shell as the autonomous-dev-loop dashboard, one-screen overview).
 
 ## Build
 
@@ -38,9 +38,12 @@ Add `docs/observations/<date>.json` beside the Markdown report; the newest `date
 
 | Page | Content |
 |---|---|
-| Overview | Tests run, observations fixed (and how many are not conclusive), agent evals tile, review-chain tile (reviewed / sampled PRs, when `review_chain` is set), follow-up list (open and unverified first, max 4), review-evidence legend |
-| Observations | Every observation, open first |
-| Evals | "Not instrumented" until an eval set exists; below it, the review-chain figures when `review_chain` is set |
+| Overview | One phone screen: status line (`bad`: a test fails or an observation is open; `warn`: one is not verified; else `ok`), then rows — **Tests** (opens the source report), **Observations** (fixed count, a chip per open or unverified observation, max 3, opening its row), **Quality** (review chain reviewed / sampled PRs with a chip per rate — under 10 reviewed PRs one chip saying a rate cannot be read —, or "Not instrumented") |
+| Observations | Every observation, open first (`#obs-<id>` anchors), then the review-evidence legend with its counts |
+| Evals | "Not instrumented" until an eval set exists; below it, the review-chain figures when `review_chain` is set (`#review-chain`) |
+| `status.json` | `{ schema_version, app, generated_at, status, headline }`, same shape as autonomous-dev-loop's |
+
+The phone tab bar ends with **Loop**, the autonomous-dev-loop dashboard (its own tab bar ends with **Tools**).
 
 ## Review chain
 
