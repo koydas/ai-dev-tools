@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Build the tool-health dashboard (ADR-019) → static HTML in --out: index.html, observations.html, evals.html
+// Build the tool-health dashboard (ADR-019, ADR-021) → static HTML in --out: index.html, observations.html, evals.html, status.json
 // Usage: node scripts/build-dashboard.mjs [--observations <dir>] [--out <dir>]
 // Input: docs/observations/*.json sidecars (schema_version 1); the newest by `date` feeds the pages.
 // Optional `review_chain` key: the `aggregate` of scripts/review-chain-metrics.mjs, shown as observational figures (not evals).
@@ -11,6 +11,8 @@ import { fileURLToPath } from 'node:url';
 
 export const SCHEMA_VERSION = 1;
 export const REPO_URL = 'https://github.com/koydas/ai-dev-tools';
+// The companion dashboard, one tap away in the tab bar (ADR-021).
+export const LOOP_DASHBOARD_URL = 'https://koydas.github.io/autonomous-dev-loop/';
 const USAGE = 'Usage: node scripts/build-dashboard.mjs [--observations <dir>] [--out <dir>]';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -142,6 +144,7 @@ export function summarize(set) {
     tests: set.tests,
     fixed,
     others: obs.length - fixed,
+    counts: Object.fromEntries(Object.keys(STATUS).map((k) => [k, obs.filter((o) => o.status === k).length])),
     followUp: [...obs].sort(byRank).slice(0, OVERVIEW_ITEMS),
     all: [...obs].sort(byRank),
     evidence: set.review_evidence ?? null,
@@ -150,48 +153,89 @@ export function summarize(set) {
   };
 }
 
+/**
+ * State of the toolbox in one word, as the overview's status line and status.json give it (ADR-021): `bad` when a
+ * test fails or an observation is open, `warn` when one is not verified, else `ok`. `headline` says why.
+ */
+export function healthStatus(m) {
+  const failing = m.tests.total - m.tests.passed;
+  const { open, unverified } = m.counts;
+  const status = failing || open ? 'bad' : unverified ? 'warn' : 'ok';
+  const parts = [failing ? `${failing} test(s) failing` : '', open ? `${open} open` : '', unverified ? `${unverified} not verified` : ''].filter(Boolean);
+  return { status, headline: parts.join(' · ') || 'all tests passing, nothing open' };
+}
+
+/** status.json: what the companion dashboard's switch can read (same shape as autonomous-dev-loop's). */
+export function statusJson(m) {
+  const { status, headline } = healthStatus(m);
+  return `${JSON.stringify({ schema_version: 1, app: 'ai-dev-tools', generated_at: m.date, status, headline }, null, 2)}\n`;
+}
+
 // ---------------------------------------------------------------------------
 // Rendering (pure): model in, HTML string out
 // ---------------------------------------------------------------------------
 
+// Tokens and shell shared with the autonomous-dev-loop dashboard (ADR-021): same palette (scripts/lib/dashboard_ui.mjs
+// there), header, phone tab bar and one-screen overview rows. Light / dark by prefers-color-scheme: no script here.
 export const STYLE = `
-:root { --bg: #f6f7fb; --surface: #fff; --ink: #0f1230; --ink-2: #4b5170; --muted: #7a809c; --border: #e6e8f2; --accent: #4353e8; --accent-bg: #eceefd;
-  --good: #0f8a4f; --good-bg: #e3f6ec; --bad: #d1243b; --bad-bg: #fde8eb; --warn: #b86e00; --warn-bg: #fff1d6; --neutral: #5d637f; --neutral-bg: #eceef5; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0d0f1c; --surface: #151829; --ink: #eef0fb; --ink-2: #b4b9d6; --muted: #868cab; --border: #262a42; --accent: #8b97ff; --accent-bg: #222850;
-  --good: #46d38c; --good-bg: #123325; --bad: #ff6b81; --bad-bg: #3a1620; --warn: #ffb547; --warn-bg: #3a2a0e; --neutral: #a3a9c6; --neutral-bg: #222640; } }
+:root { color-scheme: light dark; --bg: #f4f6fb; --surface: #fff; --ink: #101828; --ink-2: #475467; --muted: #667085; --border: #e3e8f0; --accent: #6941f5; --accent-bg: rgba(105,65,245,.10); --link: #2f5fe0;
+  --good: #16a34a; --bad: #dc2626; --warn: #b45309; --neutral: #667085; --radius: 12px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0a0f1d; --surface: #111a2c; --ink: #e8edf7; --ink-2: #b3bed3; --muted: #8190ab; --border: #22304b; --accent: #7c5cff; --accent-bg: rgba(124,92,255,.16); --link: #7aa7ff;
+  --good: #22c55e; --bad: #f05252; --warn: #fbbf24; --neutral: #8190ab; } }
+:root { --good-bg: color-mix(in srgb, var(--good) 14%, var(--surface)); --bad-bg: color-mix(in srgb, var(--bad) 14%, var(--surface)); --warn-bg: color-mix(in srgb, var(--warn) 14%, var(--surface)); --neutral-bg: color-mix(in srgb, var(--neutral) 14%, var(--surface)); }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
-a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
-header { background: var(--surface); border-bottom: 1px solid var(--border); }
-.bar { max-width: 1120px; margin: 0 auto; padding: 0 16px; display: flex; align-items: center; gap: 24px; min-height: 64px; }
-.brand { display: flex; flex-direction: column; line-height: 1.15; color: var(--ink); } .brand b { letter-spacing: .04em; } .brand small { color: var(--muted); }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+header { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); }
+.bar { max-width: 1120px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 6px 22px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 750; font-size: 16px; color: var(--ink); letter-spacing: -.3px; white-space: nowrap; }
+.brand-icon { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; color: #fff; background: linear-gradient(135deg,#8b5cf6,#6366f1); font-size: 16px; }
 nav { display: flex; gap: 4px; flex: 1; overflow-x: auto; scrollbar-width: none; }
-.bar nav a { color: var(--ink-2); padding: 20px 12px 18px; border-bottom: 2px solid transparent; white-space: nowrap; }
-.bar nav a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--accent); }
-main { max-width: 1120px; margin: 0 auto; padding: 32px 16px 48px; }
-h1 { margin: 0; font-size: 30px; } h2 { margin: 0; font-size: 18px; } .sub { color: var(--ink-2); margin: 4px 0 0; }
+.bar nav a { color: var(--ink-2); padding: 8px 12px; border-radius: 8px; white-space: nowrap; }
+.bar nav a[aria-current="page"] { color: var(--ink); background: var(--accent-bg); }
+.tools { display: flex; gap: 14px; margin-left: auto; white-space: nowrap; }
+main { max-width: 1120px; margin: 0 auto; padding: 24px 16px 48px; }
+h1 { margin: 0; font-size: 26px; } h2 { margin: 0; font-size: 18px; } .sub { color: var(--ink-2); margin: 4px 0 0; }
 .head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; align-items: end; margin-bottom: 24px; }
-.grid { display: grid; gap: 16px; margin-bottom: 16px; } .g3 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); } .g2 { grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); }
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
-.card .label { color: var(--ink-2); } .big { font-size: 36px; font-weight: 700; line-height: 1.2; margin: 4px 0; } .big.text { font-size: 26px; }
-.card .note { color: var(--muted); font-size: 13px; }
+.grid { display: grid; gap: 16px; margin-bottom: 16px; } .g2 { grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+.big { font-size: 36px; font-weight: 700; line-height: 1.2; margin: 4px 0; } .big.text { font-size: 26px; }
+.note { color: var(--muted); font-size: 13px; }
 .card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 8px; }
 ul.rows { list-style: none; margin: 0; padding: 0; } ul.rows li { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 12px 0; border-top: 1px solid var(--border); }
 ul.rows li:first-child { border-top: 0; } .t { font-weight: 600; } .d { color: var(--ink-2); font-size: 13px; }
 .pill { display: inline-block; padding: 2px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .good { color: var(--good); background: var(--good-bg); } .bad { color: var(--bad); background: var(--bad-bg); } .warn { color: var(--warn); background: var(--warn-bg); } .neutral { color: var(--neutral); background: var(--neutral-bg); }
-.when { display: block; color: var(--muted); font-size: 12px; text-align: right; margin-top: 2px; }
 ul.legend li { justify-content: flex-start; } .legend .pill { min-width: 128px; text-align: center; font-family: ui-monospace, monospace; }
 .callout { background: var(--neutral-bg); color: var(--ink-2); border-radius: 8px; padding: 10px 14px; margin-top: 12px; font-size: 13px; }
 .tag { background: var(--accent-bg); color: var(--accent); border-radius: 999px; padding: 1px 10px; font-size: 12px; margin-left: 8px; }
 table { width: 100%; border-collapse: collapse; } td:last-child { white-space: nowrap; } th, td { text-align: left; padding: 10px 8px; border-top: 1px solid var(--border); vertical-align: top; } th { color: var(--muted); font-weight: 500; font-size: 13px; border-top: 0; }
+tr:target td { background: var(--accent-bg); }
+/* Overview: one phone screen (375 × ~630 CSS px), the rows of the autonomous-dev-loop home. */
+.glance { max-width: 720px; }
+.glance h1 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.g-status { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; padding: 8px 10px; border: 1px solid var(--border); border-left: 5px solid var(--tone); border-radius: var(--radius); background: var(--surface); color: var(--ink); }
+.g-status strong { display: block; color: var(--tone); font-size: 14px; } .g-status small { display: block; color: var(--ink-2); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g-status > span:not(.chevron):not(.mark) { min-width: 0; flex: 1; }
+.mark { display: grid; place-items: center; flex: none; width: 24px; height: 24px; border: 1.5px solid var(--tone); border-radius: 50%; color: var(--tone); font-size: 13px; font-weight: 700; }
+.tone-good { --tone: var(--good); } .tone-bad { --tone: var(--bad); } .tone-warn { --tone: var(--warn); } .tone-neutral { --tone: var(--neutral); }
+.g-row { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); margin: 0 0 8px; padding: 8px 10px; }
+.g-head { display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: 'label value chev' 'sub sub sub'; align-items: baseline; column-gap: 8px; color: var(--ink); }
+.g-head:hover { text-decoration: none; }
+.g-label { grid-area: label; font-size: 11px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; white-space: nowrap; }
+.g-value { grid-area: value; justify-self: end; font-size: 18px; font-weight: 750; font-variant-numeric: tabular-nums; line-height: 1.2; white-space: nowrap; }
+.g-sub { grid-area: sub; font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chevron { grid-area: chev; color: var(--muted); font-size: 18px; }
+.g-chips { display: flex; flex-wrap: nowrap; gap: 6px; margin: 6px -10px 0; padding: 0 10px; overflow-x: auto; scrollbar-width: none; }
+.g-chip { flex: none; display: inline-flex; align-items: center; min-height: 30px; padding: 2px 10px; border: 1px solid color-mix(in srgb, var(--tone) 40%, var(--border)); border-radius: 999px; background: color-mix(in srgb, var(--tone) 8%, var(--surface)); color: var(--ink); font-size: 12.5px; white-space: nowrap; }
 .tabbar { display: none; }
 @media (max-width: 760px) {
-  .bar nav { display: none; } .bar { min-height: 56px; } th:last-child, td:last-child { display: none; } .kv th:last-child, .kv td:last-child { display: table-cell; }
-  .tabbar { display: grid; grid-template-columns: repeat(3, 1fr); position: fixed; bottom: 0; left: 0; right: 0; z-index: 25; background: var(--surface); border-top: 1px solid var(--border); padding: 4px 4px calc(4px + env(safe-area-inset-bottom)); }
-  .tabbar a { display: grid; justify-items: center; gap: 2px; padding: 6px 2px; min-height: 44px; font-size: 11px; font-weight: 600; color: var(--muted); text-decoration: none; }
+  .bar nav, .tools { display: none; } th:last-child, td:last-child { display: none; } .kv th:last-child, .kv td:last-child { display: table-cell; }
+  main { padding-top: 10px; }
+  .tabbar { display: grid; grid-template-columns: repeat(4, 1fr); position: fixed; bottom: 0; left: 0; right: 0; z-index: 25; background: var(--surface); border-top: 1px solid var(--border); padding: 4px 4px calc(4px + env(safe-area-inset-bottom)); }
+  .tabbar a { display: grid; justify-items: center; gap: 2px; padding: 6px 2px; min-height: 44px; font-size: 10.5px; font-weight: 600; color: var(--muted); text-decoration: none; }
   .tabbar a[aria-current="page"] { color: var(--accent); }
-  .tabbar svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .tabbar svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
   body { padding-bottom: 72px; }
 }
 footer { max-width: 1120px; margin: 0 auto; padding: 0 16px 32px; color: var(--muted); font-size: 13px; }
@@ -201,6 +245,7 @@ const ICON = {
   overview: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
   observations: '<path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/>',
   evals: '<path d="M5 21V10M12 21V3M19 21v-7"/>',
+  switch: '<path d="M4 8h13l-3-3M20 16H7l3 3"/>',
 };
 
 const PAGES = [
@@ -220,14 +265,16 @@ function layout(current, model, bodyHtml) {
   const page = PAGES.find((p) => p.file === current);
   const link = (p, inner) => `<a href="${p.file}"${p.file === current ? ' aria-current="page"' : ''}>${inner}</a>`;
   const nav = PAGES.map((p) => link(p, e(p.label))).join('');
-  const tabs = PAGES.map((p) => link(p, `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[p.icon]}</svg>${e(p.label)}`)).join('');
+  const icon = (k) => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>`;
+  // Last slot: the switch to the autonomous-dev-loop dashboard (ADR-021).
+  const tabs = PAGES.map((p) => link(p, `${icon(p.icon)}${e(p.label)}`)).join('') + `<a class="app-switch" href="${LOOP_DASHBOARD_URL}" title="autonomous-dev-loop dashboard">${icon('switch')}Loop</a>`;
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${e(page.title)} — ai-dev-tools</title><style>${STYLE}</style></head>
 <body><header><div class="bar">
-<a class="brand" href="index.html"><b>AI DEV TOOLS</b><small>koydas</small></a>
+<a class="brand" href="index.html"><span class="brand-icon" aria-hidden="true">⚒</span>AI Dev Tools</a>
 <nav aria-label="Pages">${nav}</nav>
-<a href="${REPO_URL}">GitHub ↗</a>
+<span class="tools"><a href="${LOOP_DASHBOARD_URL}">Dev loop ⇄</a><a href="${REPO_URL}">Repository →</a></span>
 </div></header>
 <main>${bodyHtml}</main>
 <nav class="tabbar" aria-label="Pages">${tabs}</nav>
@@ -236,50 +283,54 @@ function layout(current, model, bodyHtml) {
 `;
 }
 
-const observationRow = (o) =>
-  `<li><div><div class="t">${e(o.title)}</div><div class="d">${e(o.summary ?? '')}</div></div>` +
-  `<div>${pill(STATUS[o.status].tone, STATUS[o.status].label)}<span class="when">${e(formatDate(o.date))}</span></div></li>`;
+const TONE = { ok: 'good', warn: 'warn', bad: 'bad' };
+const TITLE = { ok: 'No problem detected', warn: 'Needs a check', bad: 'Attention needed' };
+const MARK = { ok: '✓', warn: '!', bad: '✕' };
+const chip = (href, tone, text) => `<a class="g-chip tone-${tone}" href="${href}">${e(text)}</a>`;
+const row = (id, href, label, value, sub, chips = '') =>
+  `<section class="g-row" id="g-${id}"><a class="g-head" href="${href}"><span class="g-label">${e(label)}</span><strong class="g-value">${e(value)}</strong><span class="g-sub">${e(sub)}</span><span class="chevron" aria-hidden="true">›</span></a>${chips ? `<div class="g-chips">${chips}</div>` : ''}</section>`;
 
+/**
+ * One phone screen (ADR-021): the status line, then tests, observations and quality, each row opening its page
+ * and each chip a filtered view. The evidence vocabulary is on the Observations page.
+ */
 export function renderOverview(m) {
-  const allPass = m.tests.passed === m.tests.total;
+  const h = healthStatus(m);
+  const failing = m.tests.total - m.tests.passed;
+  const source = m.source ? `${REPO_URL}/blob/main/${m.source.split('/').map(encodeURIComponent).join('/')}` : 'observations.html';
+  const pending = m.followUp.filter((o) => o.status === 'open' || o.status === 'unverified').slice(0, 3);
+  const obsChips = pending.map((o) => chip(`observations.html#obs-${encodeURIComponent(o.id)}`, STATUS[o.status].tone, `${o.id} · ${o.title}`)).join('');
+  const rc = m.reviewChain;
+  const quality = rc
+    ? row('quality', 'evals.html', 'Quality · review chain', `${rc.aggregate.reviewed} / ${rc.aggregate.prs}`, `PRs with a /pr-review report · observational, not evals`,
+      REVIEW_CHAIN.filter((x) => x.kind === 'rate').map((x) => chip('evals.html#review-chain', 'neutral', `${x.label.toLowerCase()} ${formatChainValue(x.kind, rc.aggregate[x.key])}`)).join(''))
+    : row('quality', 'evals.html', 'Quality · evals', 'Not instrumented', 'No eval history is recorded yet');
+  return layout('index.html', m, `<section class="glance" aria-label="Tool health">
+<h1>Tool health</h1>
+<a class="g-status tone-${TONE[h.status]}" href="observations.html"><span class="mark" aria-hidden="true">${MARK[h.status]}</span><span><strong>${e(TITLE[h.status])}</strong><small>${e(h.headline)} · ${e(formatDate(m.date))}</small></span><span class="chevron" aria-hidden="true">›</span></a>
+${row('tests', source, 'Tests', `${m.tests.passed} / ${m.tests.total}`, `${failing ? `${failing} failing` : 'All passing'} · latest observation ${formatDate(m.date)}`)}
+${row('observations', 'observations.html', 'Observations', `${m.fixed} fixed`, `${m.others} other${m.others === 1 ? '' : 's'} not conclusive`, obsChips)}
+${quality}
+</section>`);
+}
+
+function evidenceCard(m) {
   const evidence = EVIDENCE.map((x) => {
     const n = m.evidence?.[x.key];
     return `<li>${pill(x.tone, x.key)}<span>${e(x.text)}${Number.isInteger(n) ? ` <b>${n}</b>` : ''}</span></li>`;
   }).join('');
-  const rc = m.reviewChain;
-  const reviewChainCard = rc
-    ? `
-<div class="card"><div class="label">Review chain</div><div class="big">${rc.aggregate.reviewed} / ${rc.aggregate.prs}</div>
-<div class="note">PRs with a /pr-review report · <a href="evals.html">observational figures</a></div></div>`
-    : '';
-  return layout('index.html', m, `
-<div class="head"><div><h1>Tool health</h1><p class="sub">Overview based on the latest local observations.</p></div>
-<span class="note">Last updated: ${e(formatDate(m.date))}</span></div>
-<div class="grid g3">
-<div class="card"><div class="label">Tests run</div><div class="big">${m.tests.passed} / ${m.tests.total}</div>
-<div class="note">${allPass ? 'All passing' : `${m.tests.total - m.tests.passed} failing`} · latest observation ${e(formatDate(m.date))}</div></div>
-<div class="card"><div class="label">Observations fixed</div><div class="big">${m.fixed}</div>
-<div class="note">${m.others} other${m.others === 1 ? '' : 's'} not conclusive</div></div>
-<div class="card"><div class="label">Agent evals</div><div class="big text">Not instrumented</div>
-<div class="note">No eval history is recorded yet.</div></div>${reviewChainCard}
-</div>
-<div class="grid g2">
-<div class="card"><div class="card-head"><h2>Follow-up</h2><a href="observations.html">See all →</a></div>
-<p class="sub">Open and unverified first, from the latest session.</p><ul class="rows">${m.followUp.map(observationRow).join('')}</ul></div>
-<div class="card"><h2>Review evidence</h2><p class="sub">Statuses of the checks reported by the review agents.</p>
-<ul class="rows legend">${evidence}</ul><div class="callout">Local reports only; aggregated history is not available.</div></div>
-</div>
-<div class="card"><h2>Agent trends<span class="tag">to be wired</span></h2>
-<p class="sub">Agent evals will show up here once instrumentation is in place.</p></div>`);
+  return `<div class="card"><h2>Review evidence</h2><p class="sub">Statuses of the checks reported by the review agents.</p>
+<ul class="rows legend">${evidence}</ul><div class="callout">Local reports only; aggregated history is not available.</div></div>`;
 }
 
 export function renderObservations(m) {
   const rows = m.all
-    .map((o) => `<tr><td>${e(o.id)}</td><td><div class="t">${e(o.title)}</div><div class="d">${e(o.summary ?? '')}</div></td><td>${pill(STATUS[o.status].tone, STATUS[o.status].label)}</td><td>${e(formatDate(o.date))}</td></tr>`)
+    .map((o) => `<tr id="obs-${e(o.id)}"><td>${e(o.id)}</td><td><div class="t">${e(o.title)}</div><div class="d">${e(o.summary ?? '')}</div></td><td>${pill(STATUS[o.status].tone, STATUS[o.status].label)}</td><td>${e(formatDate(o.date))}</td></tr>`)
     .join('');
   return layout('observations.html', m, `
 <div class="head"><div><h1>Observations</h1><p class="sub">Every finding of the latest session, open first.</p></div></div>
-<div class="card"><table><thead><tr><th>ID</th><th>Observation</th><th>Status</th><th>Date</th></tr></thead><tbody>${rows}</tbody></table></div>`);
+<div class="card"><table><thead><tr><th>ID</th><th>Observation</th><th>Status</th><th>Date</th></tr></thead><tbody>${rows}</tbody></table></div>
+${evidenceCard(m)}`);
 }
 
 function reviewChainSection(rc) {
@@ -291,7 +342,7 @@ function reviewChainSection(rc) {
     ? `<div class="callout">Only ${a.reviewed} reviewed PR${a.reviewed === 1 ? '' : 's'}: too few to read a rate.</div>`
     : '';
   return `
-<div class="card"><div class="card-head"><h2>Review chain<span class="tag">observational</span></h2><span class="note">Generated ${e(formatDate(rc.generated))}</span></div>
+<div class="card" id="review-chain"><div class="card-head"><h2>Review chain<span class="tag">observational</span></h2><span class="note">Generated ${e(formatDate(rc.generated))}</span></div>
 <p class="sub">/pr-review → /pr-fixer, extracted from PR history${rc.scope ? ` (${e(rc.scope)})` : ''}: ${a.reviewed} of ${a.prs} PRs carry a report, ${a.reports} report${a.reports === 1 ? '' : 's'} in all.</p>
 ${caution}
 <table class="kv"><thead><tr><th>Figure</th><th>Value</th></tr></thead><tbody>${rows}</tbody></table>
@@ -309,17 +360,19 @@ export function renderEvals(m) {
 // Build + CLI
 // ---------------------------------------------------------------------------
 
-/** Writes the three pages into `outDir`; returns the written file names. */
+/** Writes the three pages and status.json into `outDir`; returns the written file names. */
 export function buildDashboard({ observationsDir, outDir }) {
   const set = loadLatestSet(observationsDir);
   if (!set) throw new Error(`no observation sidecar (*.json) in ${observationsDir}`);
   const model = summarize(set);
   const pages = { 'index.html': renderOverview, 'observations.html': renderObservations, 'evals.html': renderEvals };
   mkdirSync(outDir, { recursive: true });
-  return Object.entries(pages).map(([file, render]) => {
+  const files = Object.entries(pages).map(([file, render]) => {
     writeFileSync(join(outDir, file), render(model));
     return file;
   });
+  writeFileSync(join(outDir, 'status.json'), statusJson(model));
+  return [...files, 'status.json'];
 }
 
 export function parseArgs(argv) {

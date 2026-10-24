@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import {
-  escapeHtml, formatDate, validateObservationSet, loadLatestSet, summarize, renderOverview, renderObservations, renderEvals, buildDashboard, parseArgs, formatRate, REVIEW_CHAIN, SMALL_SAMPLE,
+  escapeHtml, formatDate, validateObservationSet, loadLatestSet, summarize, renderOverview, renderObservations, renderEvals, buildDashboard, parseArgs, formatRate, REVIEW_CHAIN, SMALL_SAMPLE, healthStatus, statusJson, LOOP_DASHBOARD_URL,
 } from '../scripts/build-dashboard.mjs';
 
 const SCRIPT = fileURLToPath(new URL('../scripts/build-dashboard.mjs', import.meta.url));
@@ -89,16 +89,36 @@ test('summarize: counts, open first, overview capped at 4', () => {
   assert.equal(m.evidence, null);
 });
 
-test('renderOverview: tiles, failing tests, singular "other", evidence counts', () => {
-  const html = renderOverview(summarize(set({ tests: { passed: 8, total: 10 }, observations: [obs('O1', 'fixed'), obs('O2', 'open')], review_evidence: { PASS: 7 } })));
-  assert.match(html, /8 \/ 10/);
-  assert.match(html, /2 failing/);
+test('renderOverview: one screen — status line, tests, observations, quality rows; evidence counts on Observations', () => {
+  const m = summarize(set({ tests: { passed: 8, total: 10 }, observations: [obs('O1', 'fixed'), obs('O2', 'open')], review_evidence: { PASS: 7 } }));
+  const html = renderOverview(m);
+  assert.match(html, /<a class="g-status tone-bad" href="observations\.html">.*Attention needed.*2 test\(s\) failing · 1 open/s);
+  assert.match(html, /id="g-tests">.*8 \/ 10.*2 failing/s);
   assert.match(html, /1 other not conclusive/);
-  assert.match(html, /Not instrumented/);
-  assert.match(html, /Check ran and passed\. <b>7<\/b>/);
+  assert.match(html, /id="g-quality">.*Not instrumented/s);
+  // A chip per pending observation, opening its row on the Observations page.
+  assert.match(html, /<a class="g-chip tone-bad" href="observations\.html#obs-O2">O2 · T O2<\/a>/);
+  assert.doesNotMatch(html, /obs-O1"/, 'fixed observations get no chip');
+  assert.doesNotMatch(html, /Review evidence|Agent trends/, 'the vocabulary moved to Observations; no placeholder card');
+  assert.match(renderObservations(m), /Check ran and passed\. <b>7<\/b>/);
+  assert.match(renderObservations(m), /<tr id="obs-O2">/);
   assert.match(html, /aria-current="page">Overview/);
   assert.match(renderOverview(summarize(set())), /All passing/);
   assert.match(renderOverview(summarize(set())), /3 others not conclusive/);
+  // The tests row opens the source report when the sidecar names one.
+  assert.match(renderOverview(summarize(set({ source: 'docs/observations/a b.md' }))), /id="g-tests"><a class="g-head" href="https:\/\/github\.com\/koydas\/ai-dev-tools\/blob\/main\/docs\/observations\/a%20b\.md">/);
+});
+
+test('healthStatus / status.json: bad on a failing test or an open observation, warn on an unverified one, else ok', () => {
+  const st = (over) => healthStatus(summarize(set(over)));
+  assert.deepEqual(st({}), { status: 'bad', headline: '1 open · 1 not verified' });
+  assert.deepEqual(st({ observations: [obs('O1', 'unverified'), obs('O2', 'fixed')] }), { status: 'warn', headline: '1 not verified' });
+  assert.deepEqual(st({ observations: [obs('O1', 'fixed'), obs('O2', 'not_applicable')] }), { status: 'ok', headline: 'all tests passing, nothing open' });
+  assert.deepEqual(st({ tests: { passed: 9, total: 10 }, observations: [] }), { status: 'bad', headline: '1 test(s) failing' });
+  const json = JSON.parse(statusJson(summarize(set({ observations: [obs('O1', 'open', { title: '<secret>' })] }))));
+  assert.deepEqual(json, { schema_version: 1, app: 'ai-dev-tools', generated_at: '2026-10-22', status: 'bad', headline: '1 open' });
+  assert.match(renderOverview(summarize(set({ observations: [obs('O1', 'unverified')] }))), /g-status tone-warn/);
+  assert.match(renderOverview(summarize(set({ observations: [] }))), /g-status tone-good.*No problem detected/s);
 });
 
 test('renderers: sidecar strings are escaped', () => {
@@ -109,11 +129,13 @@ test('renderers: sidecar strings are escaped', () => {
   assert.match(renderObservations(m), /&lt;img src=x onerror=1&gt;/);
 });
 
-test('layout: top nav and bottom tab bar both list the three pages, current page marked in each', () => {
+test('layout: top nav and bottom tab bar both list the three pages, current page marked in each; the tab bar ends with the Loop switch', () => {
   const m = summarize(set());
   for (const [html, file] of [[renderOverview(m), 'index.html'], [renderObservations(m), 'observations.html'], [renderEvals(m), 'evals.html']]) {
     const tabbar = /<nav class="tabbar"[^>]*>(.*?)<\/nav>/s.exec(html)[1];
     assert.equal((tabbar.match(/<a href=/g) ?? []).length, 3);
+    assert.match(tabbar, new RegExp(`<a class="app-switch" href="${LOOP_DASHBOARD_URL}"[^>]*>.*Loop</a>$`, 's'));
+    assert.match(html, /<a href="https:\/\/koydas\.github\.io\/autonomous-dev-loop\/">Dev loop ⇄<\/a>/);
     assert.equal((tabbar.match(/aria-current="page"/g) ?? []).length, 1);
     assert.match(tabbar, new RegExp(`<a href="${file}" aria-current="page">`));
     assert.equal((html.match(/<a href="[^"]+" aria-current="page">/g) ?? []).length, 2);
@@ -124,7 +146,7 @@ test('renderers: no script, no external asset; observations lists every row; eva
   const m = summarize(set());
   const all = renderOverview(m) + renderObservations(m) + renderEvals(m);
   assert.doesNotMatch(all, /<script|<link|src="http/);
-  assert.equal((renderObservations(m).match(/<tr><td>O/g) ?? []).length, 5);
+  assert.equal((renderObservations(m).match(/<tr id="obs-O\d"><td>O/g) ?? []).length, 5);
   assert.match(renderEvals(m), /Not instrumented/);
 });
 
@@ -134,7 +156,8 @@ test('buildDashboard: writes the three pages; no sidecar → error', () => {
   try {
     assert.throws(() => buildDashboard({ observationsDir: src, outDir: out }), /no observation sidecar/);
     writeFileSync(join(src, 'a.json'), JSON.stringify(set()));
-    assert.deepEqual(buildDashboard({ observationsDir: src, outDir: out }), ['index.html', 'observations.html', 'evals.html']);
+    assert.deepEqual(buildDashboard({ observationsDir: src, outDir: out }), ['index.html', 'observations.html', 'evals.html', 'status.json']);
+    assert.equal(JSON.parse(readFileSync(join(out, 'status.json'), 'utf8')).app, 'ai-dev-tools');
     assert.ok(existsSync(join(out, 'evals.html')));
     assert.match(readFileSync(join(out, 'index.html'), 'utf8'), /^<!doctype html>/);
   } finally { rmSync(src, { recursive: true }); rmSync(out, { recursive: true, force: true }); }
@@ -222,10 +245,12 @@ test('renderEvals: below SMALL_SAMPLE reviewed PRs the page says a rate cannot b
   assert.match(renderEvals(summarize(set({ review_chain: chain({ reviewed: 1, reports: 1 }) }))), /Only 1 reviewed PR: too few/);
 });
 
-test('renderOverview: review chain card shows reviewed / sampled PRs and links to the evals page', () => {
+test('renderOverview: the quality row shows reviewed / sampled PRs, a chip per rate, and links to the evals page', () => {
   const html = renderOverview(summarize(set({ review_chain: chain() })));
-  assert.match(html, /Review chain<\/div><div class="big">12 \/ 30<\/div>/);
-  assert.match(html, /href="evals\.html">observational figures/);
+  assert.match(html, /id="g-quality"><a class="g-head" href="evals\.html"><span class="g-label">Quality · review chain<\/span><strong class="g-value">12 \/ 30<\/strong>/);
+  assert.match(html, /observational, not evals/);
+  assert.equal((html.match(/href="evals\.html#review-chain"/g) ?? []).length, REVIEW_CHAIN.filter((x) => x.kind === 'rate').length);
+  assert.match(renderEvals(summarize(set({ review_chain: chain() }))), /<div class="card" id="review-chain">/);
 });
 
 test('renderers: review_chain strings are escaped', () => {
