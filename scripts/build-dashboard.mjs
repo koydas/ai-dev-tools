@@ -303,7 +303,10 @@ export function renderOverview(m) {
   const rc = m.reviewChain;
   const quality = rc
     ? row('quality', 'evals.html', 'Quality · review chain', `${rc.aggregate.reviewed} / ${rc.aggregate.prs}`, `PRs with a /pr-review report · observational, not evals`,
-      REVIEW_CHAIN.filter((x) => x.kind === 'rate').map((x) => chip('evals.html#review-chain', 'neutral', `${x.label.toLowerCase()} ${formatChainValue(x.kind, rc.aggregate[x.key])}`)).join(''))
+      // Under SMALL_SAMPLE reviewed PRs the Evals page says a rate cannot be read (ADR-020): no rate here either.
+      rc.aggregate.reviewed < SMALL_SAMPLE
+        ? chip('evals.html#review-chain', 'neutral', `only ${rc.aggregate.reviewed} reviewed PR${rc.aggregate.reviewed === 1 ? '' : 's'}: too few to read a rate`)
+        : REVIEW_CHAIN.filter((x) => x.kind === 'rate').map((x) => chip('evals.html#review-chain', 'neutral', `${x.label.toLowerCase()} ${formatChainValue(x.kind, rc.aggregate[x.key])}`)).join(''))
     : row('quality', 'evals.html', 'Quality · evals', 'Not instrumented', 'No eval history is recorded yet');
   return layout('index.html', m, `<section class="glance" aria-label="Tool health">
 <h1>Tool health</h1>

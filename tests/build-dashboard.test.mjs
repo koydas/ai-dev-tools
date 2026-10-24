@@ -250,6 +250,10 @@ test('renderOverview: the quality row shows reviewed / sampled PRs, a chip per r
   assert.match(html, /id="g-quality"><a class="g-head" href="evals\.html"><span class="g-label">Quality · review chain<\/span><strong class="g-value">12 \/ 30<\/strong>/);
   assert.match(html, /observational, not evals/);
   assert.equal((html.match(/href="evals\.html#review-chain"/g) ?? []).length, REVIEW_CHAIN.filter((x) => x.kind === 'rate').length);
+  // Below SMALL_SAMPLE reviewed PRs no rate is shown on the overview either, only why (PR #42 review).
+  const small = renderOverview(summarize(set({ review_chain: chain({ reviewed: 1 }) })));
+  assert.match(small, /<a class="g-chip tone-neutral" href="evals\.html#review-chain">only 1 reviewed PR: too few to read a rate<\/a>/);
+  assert.doesNotMatch(small.slice(small.indexOf('id="g-quality"')), /\d+(\.\d)?%/);
   assert.match(renderEvals(summarize(set({ review_chain: chain() }))), /<div class="card" id="review-chain">/);
 });
 
