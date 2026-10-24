@@ -38,7 +38,7 @@ Add `docs/observations/<date>.json` beside the Markdown report; the newest `date
 
 | Page | Content |
 |---|---|
-| Overview | One phone screen: status line (`bad`: a test fails or an observation is open; `warn`: one is not verified; else `ok`), then rows — **Tests** (opens the source report), **Observations** (fixed count, a chip per open or unverified observation, max 3, opening its row), **Quality** (review chain reviewed / sampled PRs with a chip per rate, or "Not instrumented") |
+| Overview | One phone screen: status line (`bad`: a test fails or an observation is open; `warn`: one is not verified; else `ok`), then rows — **Tests** (opens the source report), **Observations** (fixed count, a chip per open or unverified observation, max 3, opening its row), **Quality** (review chain reviewed / sampled PRs with a chip per rate — under 10 reviewed PRs one chip saying a rate cannot be read —, or "Not instrumented") |
 | Observations | Every observation, open first (`#obs-<id>` anchors), then the review-evidence legend with its counts |
 | Evals | "Not instrumented" until an eval set exists; below it, the review-chain figures when `review_chain` is set (`#review-chain`) |
 | `status.json` | `{ schema_version, app, generated_at, status, headline }`, same shape as autonomous-dev-loop's |
