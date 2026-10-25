@@ -83,22 +83,26 @@ export function mapRestPr(pr, { reviews, issueComments } = {}) {
   };
 }
 
-function getPrRest(identifier, ownerRepo) {
+// `api` and `list` are the transport (gh api, paginated list); injected so the lookup order is testable.
+export function getPrRest(identifier, ownerRepo, { api = gh, list = restList } = {}) {
   const base = `repos/${ownerRepo}`;
+  const single = (number) => JSON.parse(api(['api', '--paginate', `${base}/pulls/${number}`]));
   let pr;
   if (/^\d+$/.test(String(identifier))) {
-    pr = JSON.parse(gh(['api', '--paginate', `${base}/pulls/${identifier}`]));
+    pr = single(identifier);
   } else {
     // Same lookup as `gh pr view <branch>`: the open PR whose head is that branch of this repository.
     const owner = ownerRepo.split('/')[0];
-    [pr] = restList(`${base}/pulls?state=open&head=${encodeURIComponent(`${owner}:${identifier}`)}`);
-    if (!pr) throw new Error(`no open pull requests found for branch "${identifier}"`);
+    const [listed] = list(`${base}/pulls?state=open&head=${encodeURIComponent(`${owner}:${identifier}`)}`);
+    if (!listed) throw new Error(`no open pull requests found for branch "${identifier}"`);
+    // The list response omits `mergeable` (and other fields computed on demand): read the PR itself.
+    pr = single(listed.number);
   }
   return {
     source: 'rest',
     ...mapRestPr(pr, {
-      reviews: restList(`${base}/pulls/${pr.number}/reviews`),
-      issueComments: restList(`${base}/issues/${pr.number}/comments`),
+      reviews: list(`${base}/pulls/${pr.number}/reviews`),
+      issueComments: list(`${base}/issues/${pr.number}/comments`),
     }),
   };
 }
