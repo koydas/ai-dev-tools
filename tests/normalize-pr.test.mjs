@@ -22,7 +22,7 @@ test('normalizePr: MCP shape → gh-get-pr.mjs fields', () => {
     labels: [{ name: 'review-approved' }, { name: 'auto-fix-attempt-1' }],
     // Not carried by the MCP `get` response: unknown, not empty (ADR-011).
     assignees: null, reviewRequests: null, reviews: null, comments: null,
-    url: 'https://github.com/koydas/autonomous-dev-loop/pull/176', isDraft: false,
+    url: 'https://github.com/koydas/autonomous-dev-loop/pull/176', isDraft: false, mergeable: null,
     createdAt: '2026-10-05T14:31:21Z', updatedAt: '2026-10-05T14:33:29Z', mergedAt: null,
     repository: 'koydas/autonomous-dev-loop',
   });

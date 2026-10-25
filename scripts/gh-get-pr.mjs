@@ -2,6 +2,7 @@
 // Fetch a GitHub PR by number or head branch → JSON
 // Usage: node scripts/gh-get-pr.mjs [<pr-ref> | --branch <branch>] [--repo <owner/repo>]
 //   <pr-ref>: 42 | #42 | owner/repo#42 | https://github.com/owner/repo/pull/42[/...]
+// `mergeable` is MERGEABLE | CONFLICTING | UNKNOWN (graphql) or null (rest, not computed): a CONFLICTING PR has no merge ref, so CI and the loop's review/auto-fix do not run on it.
 // Output adds `repository` (owner/repo), so commands can pass --repo to the other scripts.
 // Node ≥ 20, requires `gh` CLI authenticated
 // Transport: `gh pr view` (GraphQL) first, REST when it fails (ADR-011); the output's `source`
@@ -35,7 +36,7 @@ export function repoFromPrUrl(url) {
   return m ? m[1] : null;
 }
 
-const FIELDS = 'number,title,body,state,author,headRefName,headRefOid,baseRefName,isCrossRepository,labels,assignees,reviewRequests,reviews,comments,url,createdAt,updatedAt,mergedAt,isDraft';
+const FIELDS = 'number,title,body,state,author,headRefName,headRefOid,baseRefName,isCrossRepository,labels,assignees,reviewRequests,reviews,comments,url,createdAt,updatedAt,mergedAt,isDraft,mergeable';
 
 // Pure: REST `pulls/{n}` object (or the GitHub MCP `pull_request_read` `get` response, which is the
 // same object with empty fields omitted) + its reviews and issue comments → the `gh pr view --json
@@ -76,6 +77,9 @@ export function mapRestPr(pr, { reviews, issueComments } = {}) {
     updatedAt: pr.updated_at ?? null,
     mergedAt: pr.merged_at ?? null,
     isDraft: pr.draft === true,
+    // gh's vocabulary. REST computes `mergeable` asynchronously (null until then) and the MCP response omits
+    // empty fields: absent or null is unknown (null), never a default (ADR-011).
+    mergeable: pr.mergeable === true ? 'MERGEABLE' : pr.mergeable === false ? 'CONFLICTING' : null,
   };
 }
 

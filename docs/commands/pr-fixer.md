@@ -17,6 +17,7 @@ Closes the loop between `/pr-review` and a clean, mergeable branch. Takes the fi
 
 ## What it does
 
+0. Stops with `NEEDS_REVIEW` when the PR conflicts with its base (`mergeable: CONFLICTING`): resolve the conflict first (autonomous-dev-loop **Conflicts Fix** workflow, or merge the base by hand), then re-run
 1. Reads the blocking issues and the non-blocking suggestions (`**Non-blocking suggestions**` / `**Non-blocking notes**`) from the review file — or from the latest `/pr-review` report posted on the PR when there is no local file
 2. Reads the human feedback with `scripts/gh-get-pr-feedback.mjs`: comments, review bodies and unresolved threads written by humans with a role on the repository (`OWNER` / `MEMBER` / `COLLABORATOR`). **Only two sources are applied — the `/pr-review` report and those humans.** Left out: bots (`type: Bot`, `[bot]` logins — Codex, Claude Code Review, CI), resolved threads, and — listed for you, never applied — generated comments on a human account (Claude Code footer, machine markers such as `<!-- adl-review … -->`), outsiders (anyone can comment on a public PR, report-shaped text included) and authors whose type cannot be determined
 3. Runs `code-builder` with the report's lists, the human feedback and the current diff — blocking first. A human comment that asks for no change (question, approval) or needs a design decision is skipped with the reason

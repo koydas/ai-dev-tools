@@ -43,6 +43,10 @@ Cloud sessions do not install repository-declared plugins, so the setup script i
 2. Put invariants in `CLAUDE.md` / `AGENTS.md`; put multi-step procedures in `.claude/skills/<name>/SKILL.md` (`name` + `description`).
 3. Add a `## Toolbox` section to `CLAUDE.md` and a `docs/claude-code.md`; record an ADR if the repo has an ADR practice.
 
+## Handoff from the loop's `needs-human`
+
+A PR that autonomous-dev-loop escalates (`needs-human`) is the entry point of Level 1. For a merge conflict (`conflicts-fix`, loop ADR-0058) the comment names the files and the reason (`protected_path`, `model_rejected`, `guard_rejected`, …): merge the base by hand, then `/pr-review` and `/pr-fixer` resume the PR. Both read `mergeable` from `gh-get-pr.mjs`: `/pr-review` flags a `CONFLICTING` PR in its report, `/pr-fixer` stops with `NEEDS_REVIEW` until the conflict is resolved, because fixes written on a stale base do not apply once the base is merged.
+
 ## Current adopters
 
 | Repo | Skills | Docs |

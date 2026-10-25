@@ -10,6 +10,7 @@ Apply to the current branch the findings of exactly two sources: the `/pr-review
 ## Steps
 
 1. Identify the PR: `number` and `repository` from `node "${CLAUDE_PLUGIN_ROOT}/scripts/gh-get-pr.mjs"` (current branch), or from the PR number argument
+1b. If the PR's `mergeable` (same `gh-get-pr.mjs` output) is `CONFLICTING`, stop with `NEEDS_REVIEW` before changing anything: fixes written on a stale base do not apply cleanly once the base is merged. Point to the autonomous-dev-loop **Conflicts Fix** workflow (`workflow_dispatch` with the PR number) or a manual merge of the base, then re-run
 2. Fetch the PR feedback: `node "${CLAUDE_PLUGIN_ROOT}/scripts/gh-get-pr-feedback.mjs" <number> --repo <repository>` — the latest `/pr-review` report posted by a trusted author (`latestPrReview`) and the trusted human comments, reviews and unresolved threads (`human`). Bots are counted in `excluded`; generated, untrusted (outsider) and unknown items are in `notApplied`. If the script fails, say so and continue with the report only — never fall back to reading raw PR comments
 3. Locate the review report:
    - If an argument other than `--blocking-only` is provided, use it as the path, or as the PR number to find the file in the reports directory (`node "${CLAUDE_PLUGIN_ROOT}/scripts/report-path.mjs" --dir`)

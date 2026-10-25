@@ -61,7 +61,7 @@ test('mapRestPr: REST PR + activity → every gh pr view field', () => {
     reviews: [{ id: 'PRR_1', author: { login: 'alice' }, body: '', state: 'APPROVED', submittedAt: 't', commit: { oid: SHA } }],
     comments: [{ id: 'IC_1', author: { login: 'koydas' }, body: 'hi', createdAt: 't2', url: 'u' }],
     url: 'https://github.com/koydas/autonomous-dev-loop/pull/176',
-    createdAt: '2026-10-05T14:31:21Z', updatedAt: '2026-10-05T17:51:29Z', mergedAt: '2026-10-05T17:51:29Z', isDraft: false,
+    createdAt: '2026-10-05T14:31:21Z', updatedAt: '2026-10-05T17:51:29Z', mergedAt: '2026-10-05T17:51:29Z', isDraft: false, mergeable: null,
   });
 });
 
@@ -104,4 +104,11 @@ function unknownFlagCli(script, args) {
 test('gh-get-pr CLI: unknown option is rejected before any network call', () => {
   unknownFlagCli('gh-get-pr', ['1', '--bogus']);
   unknownFlagCli('gh-get-pr', ['--bogus']);
+});
+
+test('mapRestPr: mergeable maps to gh\'s vocabulary; not computed or omitted is null, never MERGEABLE', () => {
+  assert.equal(mapRestPr({ ...REST_PR, mergeable: true }).mergeable, 'MERGEABLE');
+  assert.equal(mapRestPr({ ...REST_PR, mergeable: false }).mergeable, 'CONFLICTING');
+  assert.equal(mapRestPr({ ...REST_PR, mergeable: null }).mergeable, null);
+  assert.equal(mapRestPr(REST_PR).mergeable, null);
 });
