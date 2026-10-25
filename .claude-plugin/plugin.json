@@ -1,6 +1,6 @@
 {
   "name": "ai-dev-tools",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Human-gated issue → patch → review pipelines: commands, agents and their GitHub I/O scripts",
   "author": { "name": "koydas" },
   "repository": "https://github.com/koydas/ai-dev-tools",
