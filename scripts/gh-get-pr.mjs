@@ -2,6 +2,7 @@
 // Fetch a GitHub PR by number or head branch → JSON
 // Usage: node scripts/gh-get-pr.mjs [<pr-ref> | --branch <branch>] [--repo <owner/repo>]
 //   <pr-ref>: 42 | #42 | owner/repo#42 | https://github.com/owner/repo/pull/42[/...]
+// `mergeable` is MERGEABLE | CONFLICTING | UNKNOWN (graphql) or null (rest, not computed): a CONFLICTING PR has no merge ref, so CI and the loop's review/auto-fix do not run on it.
 // Output adds `repository` (owner/repo), so commands can pass --repo to the other scripts.
 // Node ≥ 20, requires `gh` CLI authenticated
 // Transport: `gh pr view` (GraphQL) first, REST when it fails (ADR-011); the output's `source`
@@ -35,7 +36,7 @@ export function repoFromPrUrl(url) {
   return m ? m[1] : null;
 }
 
-const FIELDS = 'number,title,body,state,author,headRefName,headRefOid,baseRefName,isCrossRepository,labels,assignees,reviewRequests,reviews,comments,url,createdAt,updatedAt,mergedAt,isDraft';
+const FIELDS = 'number,title,body,state,author,headRefName,headRefOid,baseRefName,isCrossRepository,labels,assignees,reviewRequests,reviews,comments,url,createdAt,updatedAt,mergedAt,isDraft,mergeable';
 
 // Pure: REST `pulls/{n}` object (or the GitHub MCP `pull_request_read` `get` response, which is the
 // same object with empty fields omitted) + its reviews and issue comments → the `gh pr view --json
@@ -76,25 +77,32 @@ export function mapRestPr(pr, { reviews, issueComments } = {}) {
     updatedAt: pr.updated_at ?? null,
     mergedAt: pr.merged_at ?? null,
     isDraft: pr.draft === true,
+    // gh's vocabulary. REST computes `mergeable` asynchronously (null until then) and the MCP response omits
+    // empty fields: absent or null is unknown (null), never a default (ADR-011).
+    mergeable: pr.mergeable === true ? 'MERGEABLE' : pr.mergeable === false ? 'CONFLICTING' : null,
   };
 }
 
-function getPrRest(identifier, ownerRepo) {
+// `api` and `list` are the transport (gh api, paginated list); injected so the lookup order is testable.
+export function getPrRest(identifier, ownerRepo, { api = gh, list = restList } = {}) {
   const base = `repos/${ownerRepo}`;
+  const single = (number) => JSON.parse(api(['api', '--paginate', `${base}/pulls/${number}`]));
   let pr;
   if (/^\d+$/.test(String(identifier))) {
-    pr = JSON.parse(gh(['api', '--paginate', `${base}/pulls/${identifier}`]));
+    pr = single(identifier);
   } else {
     // Same lookup as `gh pr view <branch>`: the open PR whose head is that branch of this repository.
     const owner = ownerRepo.split('/')[0];
-    [pr] = restList(`${base}/pulls?state=open&head=${encodeURIComponent(`${owner}:${identifier}`)}`);
-    if (!pr) throw new Error(`no open pull requests found for branch "${identifier}"`);
+    const [listed] = list(`${base}/pulls?state=open&head=${encodeURIComponent(`${owner}:${identifier}`)}`);
+    if (!listed) throw new Error(`no open pull requests found for branch "${identifier}"`);
+    // The list response omits `mergeable` (and other fields computed on demand): read the PR itself.
+    pr = single(listed.number);
   }
   return {
     source: 'rest',
     ...mapRestPr(pr, {
-      reviews: restList(`${base}/pulls/${pr.number}/reviews`),
-      issueComments: restList(`${base}/issues/${pr.number}/comments`),
+      reviews: list(`${base}/pulls/${pr.number}/reviews`),
+      issueComments: list(`${base}/issues/${pr.number}/comments`),
     }),
   };
 }

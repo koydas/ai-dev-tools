@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { parsePrRef, repoFromPrUrl, mapRestPr } from '../scripts/gh-get-pr.mjs';
+import { parsePrRef, repoFromPrUrl, mapRestPr, getPrRest } from '../scripts/gh-get-pr.mjs';
 
 test('parsePrRef: bare number and #number carry no repo', () => {
   assert.deepEqual(parsePrRef('42'), { number: 42, repo: undefined });
@@ -61,7 +61,7 @@ test('mapRestPr: REST PR + activity → every gh pr view field', () => {
     reviews: [{ id: 'PRR_1', author: { login: 'alice' }, body: '', state: 'APPROVED', submittedAt: 't', commit: { oid: SHA } }],
     comments: [{ id: 'IC_1', author: { login: 'koydas' }, body: 'hi', createdAt: 't2', url: 'u' }],
     url: 'https://github.com/koydas/autonomous-dev-loop/pull/176',
-    createdAt: '2026-10-05T14:31:21Z', updatedAt: '2026-10-05T17:51:29Z', mergedAt: '2026-10-05T17:51:29Z', isDraft: false,
+    createdAt: '2026-10-05T14:31:21Z', updatedAt: '2026-10-05T17:51:29Z', mergedAt: '2026-10-05T17:51:29Z', isDraft: false, mergeable: null,
   });
 });
 
@@ -104,4 +104,27 @@ function unknownFlagCli(script, args) {
 test('gh-get-pr CLI: unknown option is rejected before any network call', () => {
   unknownFlagCli('gh-get-pr', ['1', '--bogus']);
   unknownFlagCli('gh-get-pr', ['--bogus']);
+});
+
+test('mapRestPr: mergeable maps to gh\'s vocabulary; not computed or omitted is null, never MERGEABLE', () => {
+  assert.equal(mapRestPr({ ...REST_PR, mergeable: true }).mergeable, 'MERGEABLE');
+  assert.equal(mapRestPr({ ...REST_PR, mergeable: false }).mergeable, 'CONFLICTING');
+  assert.equal(mapRestPr({ ...REST_PR, mergeable: null }).mergeable, null);
+  assert.equal(mapRestPr(REST_PR).mergeable, null);
+});
+
+test('getPrRest: a branch is resolved through the list, then the PR itself is read (the list omits mergeable)', () => {
+  const calls = [];
+  const list = (endpoint) => { calls.push(endpoint); return /pulls\?state=open/.test(endpoint) ? [{ number: 7 }] : []; };
+  const api = (args) => { calls.push(args.at(-1)); return JSON.stringify({ ...REST_PR, number: 7, mergeable: false }); };
+  const pr = getPrRest('feature/x', 'o/r', { api, list });
+  assert.equal(pr.mergeable, 'CONFLICTING');
+  assert.equal(pr.source, 'rest');
+  assert.deepEqual(calls.slice(0, 2), ['repos/o/r/pulls?state=open&head=o%3Afeature%2Fx', 'repos/o/r/pulls/7']);
+  // A number is read directly, with no list.
+  calls.length = 0;
+  assert.equal(getPrRest('7', 'o/r', { api, list }).mergeable, 'CONFLICTING');
+  assert.equal(calls[0], 'repos/o/r/pulls/7');
+  assert.ok(!calls.some((c) => /pulls\?state=open/.test(c)));
+  assert.throws(() => getPrRest('nope', 'o/r', { api, list: () => [] }), /no open pull requests found for branch "nope"/);
 });
