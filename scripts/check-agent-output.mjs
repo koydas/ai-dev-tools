@@ -17,16 +17,20 @@ const AGENT_NAME = /^[a-z][a-z0-9-]*$/;
 const AGENTS_DIR = new URL('../agents/', import.meta.url);
 
 // Pure: output → [{ title, body }] for each level-3 heading outside a fenced block.
+// Fences follow CommonMark: a block closes only on the same character, at least as many of them as the opener,
+// and nothing after them (an info string means a nested opener, not a closer). A backtick opener whose info
+// string holds a backtick is inline code, not a fence.
 export function parseSections(text) {
   const sections = [];
   let fence = null;
   for (const line of String(text ?? '').split(/\r?\n/)) {
-    const marker = line.match(/^\s*(`{3,}|~{3,})/)?.[1];
-    if (marker) {
-      if (!fence) fence = marker[0];
-      else if (marker[0] === fence) fence = null;
+    const m = line.match(/^\s*(`{3,}|~{3,})(.*)$/);
+    if (m && !fence) {
+      if (!(m[1][0] === '`' && m[2].includes('`'))) fence = m[1];
+    } else if (m && m[1][0] === fence[0] && m[1].length >= fence.length && !m[2].trim()) {
+      fence = null;
     }
-    const heading = !fence && !marker ? line.match(/^### (\S.*?)\s*$/) : null;
+    const heading = !fence && !m ? line.match(/^### (\S.*?)\s*$/) : null;
     if (heading) sections.push({ title: heading[1], body: [] });
     else if (sections.length) sections.at(-1).body.push(line);
   }
