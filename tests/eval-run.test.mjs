@@ -55,11 +55,12 @@ test('buildPrompt: base, every AC, no-CI and output instructions', () => {
   assert.match(p, /No base CI results are available/);
 });
 
-test('buildClaudeArgs: read-only tools, no write tool, optional model and effort', () => {
+test('buildClaudeArgs: no Write/Edit tool, Bash allowed, optional model and effort', () => {
   const a = buildClaudeArgs({ prompt: 'p', systemPrompt: 's', budget: 3 });
   assert.equal(a[a.indexOf('--tools') + 1], 'Read,Grep,Glob,Bash');
-  assert.ok(a.includes('dontAsk') && a.includes('--no-session-persistence'));
-  assert.ok(!a.some((x) => /Write|Edit|git (push|commit|checkout|reset)|curl|gh /.test(x)));
+  assert.ok(a.includes('bypassPermissions') && a.includes('--no-session-persistence'));
+  assert.ok(!a.includes('--allowedTools'));
+  assert.ok(!a[a.indexOf('--tools') + 1].split(',').some((t) => /^(Write|Edit|NotebookEdit)$/.test(t)));
   assert.ok(!a.includes('--model') && !a.includes('--effort'));
   const b = buildClaudeArgs({ prompt: 'p', systemPrompt: 's', budget: 3, model: 'm', effort: 'low' });
   assert.deepEqual([b[b.indexOf('--model') + 1], b[b.indexOf('--effort') + 1]], ['m', 'low']);

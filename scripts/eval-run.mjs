@@ -22,7 +22,6 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const VALUE_FLAGS = ['--case', '--variant', '--runs', '--model', '--effort', '--cases', '--out', '--raw-dir', '--timeout-min', '--max-budget-usd'];
 const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
 const TOOLS = 'Read,Grep,Glob,Bash';
-const ALLOWED_BASH = ['git diff:*', 'git log:*', 'git show:*', 'git status:*', 'git merge-base:*', 'git ls-files:*', 'node --test:*', 'npm test:*', 'npm run:*'];
 // Pinned so a result is comparable: the eval measures the agent definition, not the CLI defaults.
 const GIT_ENV = { GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'uploadpack.allowAnySHA1InWant', GIT_CONFIG_VALUE_0: 'true' };
 
@@ -75,11 +74,13 @@ export function buildPrompt(evalCase) {
   ].join('\n');
 }
 
-// Pure: the `claude` argv. Read-only tools plus the checks the agent runs; nothing can write or reach the network.
+// Pure: the `claude` argv. No Write/Edit tool; Bash is unrestricted like in /pr-review (the agent runs the repo's checks:
+// compound commands, `node --test | tail`, loops — a per-command allowlist denied them and weakened the review). The
+// checkout is a disposable repo of old history; this is not a sandbox: do not run the eval on untrusted cases.
 export function buildClaudeArgs({ prompt, systemPrompt, model, effort, budget }) {
   return [
     '-p', prompt, '--output-format', 'json', '--no-session-persistence', '--setting-sources', 'project',
-    '--permission-mode', 'dontAsk', '--tools', TOOLS, '--allowedTools', ...ALLOWED_BASH.map((c) => `Bash(${c})`), 'Read', 'Grep', 'Glob',
+    '--permission-mode', 'bypassPermissions', '--tools', TOOLS,
     '--append-system-prompt', systemPrompt, '--max-budget-usd', String(budget),
     ...(model ? ['--model', model] : []), ...(effort ? ['--effort', effort] : []),
   ];
