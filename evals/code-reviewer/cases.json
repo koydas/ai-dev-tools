@@ -1,0 +1,197 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "pr26-legacy-skills-link",
+      "source": "PR #26",
+      "agent": "code-reviewer",
+      "ac": [
+        "refactor: conventions become path-scoped Claude Code rules (ADR-015)"
+      ],
+      "base": "8d52f7c52cfc00bc9b83ee9d69437346cae8cf1f",
+      "head": "df82f0317b133bf54bd86ddf4dd9e1322156b8ca",
+      "fixed_head": "c26aec02d079347cfe5a770383504602aa595356",
+      "finding": {
+        "path": "scripts/onboarding.mjs",
+        "pattern": "legacy|stale|dangling|obsolete|relocat|old clone|previous clone",
+        "summary": "Onboarding compares the legacy ~/.claude/skills link to the current clone only, so a link left by another clone survives re-onboarding."
+      }
+    },
+    {
+      "id": "pr27-utf8-split-chunks",
+      "source": "PR #27",
+      "agent": "code-reviewer",
+      "ac": [
+        "feat(mcp): expose the toolbox as an MCP server (ADR-016)"
+      ],
+      "base": "b9d511a5fa589a190736017273404c9ce6357b17",
+      "head": "0783f67e2d2b29db9747e5368e6e1949368ed468",
+      "fixed_head": "ae8167453f6a689fa63a1253ba7f28e1808a1d45",
+      "finding": {
+        "path": "scripts/mcp-server.mjs",
+        "pattern": "utf-?8|multi-?byte|setEncoding|split|chunk|decod",
+        "summary": "Subprocess stdout/stderr chunks are appended as Buffers, so a multi-byte character split across chunks is replaced by U+FFFD with isError false."
+      }
+    },
+    {
+      "id": "pr31-redirect-downgrade",
+      "source": "PR #31",
+      "agent": "code-reviewer",
+      "ac": [
+        "feat: add /loop-insights and the loop-analyst agent (ADR-017)"
+      ],
+      "base": "0fe5f8627a4104f6267de9053a97fb022cee1a0c",
+      "head": "d7174c97b7b5f996916fb6fe7ad698de2b0d80ee",
+      "fixed_head": "b84d0620c6f8dfd75ff22b7e3f590f57e8ec9e37",
+      "finding": {
+        "path": "scripts/loop-insights.mjs",
+        "pattern": "redirect",
+        "summary": "fetch follows redirects before the https check runs on the final URL, so an https → http → https chain makes an unencrypted request."
+      }
+    },
+    {
+      "id": "pr36-test-pins-counts",
+      "source": "PR #36",
+      "agent": "code-reviewer",
+      "ac": [
+        "feat: static tool-health dashboard built from observation sidecars"
+      ],
+      "base": "63118dd1cf3d76818861083300b30de64e1af2cc",
+      "head": "f78c408bf3bc00560115418faf52a1d54bf30745",
+      "fixed_head": "2ec139262ef5e6088e49e93a6127b8ab097b9e08",
+      "finding": {
+        "path": "tests/build-dashboard.test.mjs",
+        "pattern": "160|pinn?ed|hard-?cod|brittle|newer|latest|fixture",
+        "summary": "The CLI test pins the first sidecar test counts (160/160), so adding a newer sidecar fails the test that gates the deploy."
+      }
+    },
+    {
+      "id": "pr38-thread-path-dropped",
+      "source": "PR #38",
+      "agent": "code-reviewer",
+      "ac": [
+        "feat: add review-chain-metrics script (/pr-review → /pr-fixer signals from PR history)"
+      ],
+      "base": "6050396e0dbea14af68fd3978ccf7d12b79131f5",
+      "head": "73395567243bda4a354b0c7b921ee26f88447aa6",
+      "fixed_head": "8ac50f9b5f7cc712e2ca2c4945167ed55da3b0d7",
+      "finding": {
+        "path": "scripts/review-chain-metrics.mjs",
+        "pattern": "path|asMember|beyond|cited",
+        "summary": "asMember drops the REST comment path, so a thread on a file already cited by a report is counted as beyond the review."
+      }
+    },
+    {
+      "id": "pr38-recent-silent-cap",
+      "source": "PR #38",
+      "agent": "code-reviewer",
+      "ac": [
+        "feat: add review-chain-metrics script (/pr-review → /pr-fixer signals from PR history)"
+      ],
+      "base": "6050396e0dbea14af68fd3978ccf7d12b79131f5",
+      "head": "73395567243bda4a354b0c7b921ee26f88447aa6",
+      "fixed_head": "8ac50f9b5f7cc712e2ca2c4945167ed55da3b0d7",
+      "finding": {
+        "path": "scripts/review-chain-metrics.mjs",
+        "pattern": "recent|100|page|paginat|truncat|cap",
+        "summary": "--recent above 100 is silently capped to one REST page, so the aggregates describe a smaller sample than requested."
+      }
+    },
+    {
+      "id": "pr38-generated-counted-human",
+      "source": "PR #38",
+      "agent": "code-reviewer",
+      "ac": [
+        "feat: add review-chain-metrics script (/pr-review → /pr-fixer signals from PR history)"
+      ],
+      "base": "6050396e0dbea14af68fd3978ccf7d12b79131f5",
+      "head": "8ac50f9b5f7cc712e2ca2c4945167ed55da3b0d7",
+      "fixed_head": "aba057c41085d25898ab7363e212b6c07bcaaa4e",
+      "finding": {
+        "path": "scripts/review-chain-metrics.mjs",
+        "pattern": "generated|classifyComment|bot|signature|human",
+        "summary": "A thread posted through a trusted account with the Claude Code signature counts as human feedback."
+      }
+    },
+    {
+      "id": "pr38-rename-previous-filename",
+      "source": "PR #38",
+      "agent": "code-reviewer",
+      "ac": [
+        "feat: add review-chain-metrics script (/pr-review → /pr-fixer signals from PR history)"
+      ],
+      "base": "6050396e0dbea14af68fd3978ccf7d12b79131f5",
+      "head": "aba057c41085d25898ab7363e212b6c07bcaaa4e",
+      "fixed_head": "ed26cdee9cde1515b863838abb2bc53dc2194ddb",
+      "finding": {
+        "path": "scripts/review-chain-metrics.mjs",
+        "pattern": "renam|previous_filename",
+        "summary": "A finding on a file renamed later is reported untouched because only the new filename is collected."
+      }
+    },
+    {
+      "id": "pr38-compare-300-files",
+      "source": "PR #38",
+      "agent": "code-reviewer",
+      "ac": [
+        "feat: add review-chain-metrics script (/pr-review → /pr-fixer signals from PR history)"
+      ],
+      "base": "6050396e0dbea14af68fd3978ccf7d12b79131f5",
+      "head": "aba057c41085d25898ab7363e212b6c07bcaaa4e",
+      "fixed_head": "ed26cdee9cde1515b863838abb2bc53dc2194ddb",
+      "finding": {
+        "path": "scripts/review-chain-metrics.mjs",
+        "pattern": "300|truncat|incomplete|compare",
+        "summary": "The compare API lists at most 300 files; findings on omitted files are counted as untouched instead of unknown."
+      }
+    },
+    {
+      "id": "pr38-escaped-pipe",
+      "source": "PR #38",
+      "agent": "code-reviewer",
+      "ac": [
+        "feat: add review-chain-metrics script (/pr-review → /pr-fixer signals from PR history)"
+      ],
+      "base": "6050396e0dbea14af68fd3978ccf7d12b79131f5",
+      "head": "ed26cdee9cde1515b863838abb2bc53dc2194ddb",
+      "fixed_head": "31b07b43fb3f33f0b5b45fff243a7be54b5b18d9",
+      "finding": {
+        "path": "scripts/review-chain-metrics.mjs",
+        "pattern": "escap|pipe|delimiter|split",
+        "summary": "Evidence rows are split on every |, so an escaped pipe in a command shifts the Result column and drops the check from the tallies."
+      }
+    },
+    {
+      "id": "pr42-small-sample-rates",
+      "source": "PR #42",
+      "agent": "code-reviewer",
+      "ac": [
+        "Dashboard: same shell as autonomous-dev-loop, one-screen overview, Loop switch (ADR-021)"
+      ],
+      "base": "e09b46bfe923784616f2878f66ac211a2d40af41",
+      "head": "bc83ca206ed1db5a49444894311e762c0bb34c1c",
+      "fixed_head": "ede56010b2625a38d72c4f2de0928120b52a16d8",
+      "finding": {
+        "path": "scripts/build-dashboard.mjs",
+        "pattern": "small|sample|too few|caveat|reviewed",
+        "summary": "The overview shows review-chain rates with a single reviewed PR, without the small-sample caveat ADR-020 requires."
+      }
+    },
+    {
+      "id": "pr45-mergeable-null-on-branch",
+      "source": "PR #45",
+      "agent": "code-reviewer",
+      "ac": [
+        "feat(pr-review, pr-fixer): report a conflicting PR; handoff from the loop's conflicts-fix"
+      ],
+      "base": "db5e17aed481340db5176451b6127f0331f49e8e",
+      "head": "6ed433bf1566b4d51b614f7b4b33754a91621310",
+      "fixed_head": "2622e90b307498f8df42f0571905dc3b93f0f9aa",
+      "finding": {
+        "path": "scripts/gh-get-pr.mjs",
+        "pattern": "mergeable|list",
+        "summary": "The REST branch lookup maps the pulls list response, which has no mergeable field, so a conflicting PR reads mergeable null and bypasses the guard."
+      }
+    }
+  ]
+}
