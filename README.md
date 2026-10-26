@@ -221,6 +221,7 @@ Next step and what to pass forward
 | `config.mjs` | `loadGitConfig()` / `loadPathsConfig()` / `loadMetaLoopConfig()` — read `configs/git.yaml` / `configs/paths.yaml` / `configs/meta-loop.yaml` | library |
 | `loop-insights.mjs` | Fetch the autonomous-dev-loop `findings.json` (https or local path, no token, size and time caps), validate it field by field, drop unknown fields, select the findings with a lever → JSON for `loop-analyst` | via `/loop-insights` |
 | `report-path.mjs` | Resolve the review report path from PR JSON on stdin (`AI_DEV_TOOLS_REPORTS_DIR`, else `configs/paths.yaml`; refuses a non-ignored dir inside the working tree) | CLI / via commands |
+| `check-agent-output.mjs` | Check an agent output against the ADR-003 contract (`Status` first, `Handoff` last, valid status, `halts` flag); `--agent <name>` restricts Status to the values `agents/<name>.md` declares | CLI (grader for evals) |
 | `mcp-server.mjs` | MCP server over stdio: the GitHub scripts as tools, commands as prompts, agents as resources; `post_comment` confirmed by elicitation (ADR-016) | MCP client |
 | `mcp-tools.mjs` | MCP tool registry — schemas, annotations, input validation → script argv | library |
 | `build-dashboard.mjs` | Build the static tool-health dashboard (one-screen overview, observations, evals, review-chain figures, `status.json`; same shell as the autonomous-dev-loop dashboard, ADR-021) from the `docs/observations/*.json` sidecars → `_site/`; deployed to GitHub Pages by `dashboard.yml` (ADR-019, ADR-020) | CLI / CI |
