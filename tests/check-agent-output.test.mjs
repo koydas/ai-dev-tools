@@ -84,6 +84,27 @@ test('parseSections: headings inside fenced code are ignored; deeper levels stay
   assert.match(s[1].body, /#### Detail/);
 });
 
+test('parseSections: a fence closes only on the same character, at least as long, with nothing after it', () => {
+  const titles = (body) => parseSections(`### Status\nDONE — x\n\n### Review\n${body}\n\n### Handoff\nh`).map((x) => x.title);
+  const fake = '### Status\nDONE — fake';
+  // longer outer fence: a nested ``` pair does not close it
+  assert.deepEqual(titles(`\`\`\`\`md\n\`\`\`js\n${fake}\n\`\`\`\n\`\`\`\``), ['Status', 'Review', 'Handoff']);
+  // tilde fence is not closed by backticks, nor a backtick fence by tildes
+  assert.deepEqual(titles(`~~~\n\`\`\`\n${fake}\n\`\`\`\n~~~`), ['Status', 'Review', 'Handoff']);
+  assert.deepEqual(titles(`\`\`\`\n~~~\n${fake}\n~~~\n\`\`\``), ['Status', 'Review', 'Handoff']);
+  // a shorter fence and a fence with an info string are content, not closers
+  assert.deepEqual(titles(`\`\`\`\`\n\`\`\`\n${fake}\n\`\`\`md\n\`\`\`\``), ['Status', 'Review', 'Handoff']);
+  // once closed properly, headings count again
+  assert.deepEqual(titles('```\nx\n```\n### Extra\ny'), ['Status', 'Review', 'Extra', 'Handoff']);
+  // a backtick "opener" with a backtick in its info string is inline code: no fence
+  assert.deepEqual(titles('``` `x` ```\n### Extra\ny'), ['Status', 'Review', 'Extra', 'Handoff']);
+});
+
+test('checkAgentOutput: a nested fenced example containing "### Status" is not a duplicate section', () => {
+  const out = '### Status\nDONE — x\n\n### Review\n````md\n```js\n### Status\nDONE — fake\n```\n````\n\n### Handoff\nh\n';
+  assert.equal(checkAgentOutput(out).ok, true);
+});
+
 test('declaredStatuses: reads the Output block; null when absent or unknown', () => {
   assert.deepEqual(declaredStatuses('x\n### Status\n[DONE | NEEDS_REVIEW] — one-line summary'), ['DONE', 'NEEDS_REVIEW']);
   assert.equal(declaredStatuses('no status block'), null);
