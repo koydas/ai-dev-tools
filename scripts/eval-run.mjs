@@ -2,23 +2,26 @@
 // Run the code-reviewer agent on the eval cases and grade each output → results JSON + summary
 // Usage: node scripts/eval-run.mjs [--case <id>] [--variant defect|fixed|both] [--runs <1..10>] [--model <m>]
 //          [--effort <level>] [--cases <file>] [--out <file>] [--raw-dir <dir>] [--timeout-min <n>]
-//          [--max-budget-usd <n>] [--dry-run]
+//          [--max-budget-usd <n>] [--dry-run] [--overwrite]
 //        node scripts/eval-run.mjs --regrade <results.json> [--cases <file>] [--out <file>] [--raw-dir <dir>]   (re-grade saved outputs, no LLM call)
+// Paths: --out defaults to evals/results/<date>-code-reviewer.json (an existing file is refused without --overwrite);
+// raw outputs go to <out dir>/raw/<out name>/ and the results file records that location (`raw_dir`). --regrade
+// defaults to the input file (in place) and its recorded `raw_dir`.
 // Each run reviews an isolated repo holding only the history up to the reviewed commit (`head` for the defect
 // variant, `fixed_head` for the fixed one), so the fix cannot be read from git. It calls `claude -p`: it costs
 // money and is not deterministic — run it by hand, never in CI. Exit 1: bad input; 2: a run errored.
 // Node ≥ 20, no external dependencies
 
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { exitOnUnknownFlag } from './gh-transport.mjs';
 import { gradeReview, validateCases } from './eval-grade.mjs';
 import { checkAgentOutput } from './check-agent-output.mjs';
 
-const USAGE = 'Usage: node scripts/eval-run.mjs [--case <id>] [--variant defect|fixed|both] [--runs <1..10>] [--model <m>] [--effort <level>] [--cases <file>] [--out <file>] [--raw-dir <dir>] [--timeout-min <n>] [--max-budget-usd <n>] [--dry-run] | --regrade <results.json> [--cases <file>] [--out <file>] [--raw-dir <dir>]';
+const USAGE = 'Usage: node scripts/eval-run.mjs [--case <id>] [--variant defect|fixed|both] [--runs <1..10>] [--model <m>] [--effort <level>] [--cases <file>] [--out <file>] [--raw-dir <dir>] [--timeout-min <n>] [--max-budget-usd <n>] [--dry-run] [--overwrite] | --regrade <results.json> [--cases <file>] [--out <file>] [--raw-dir <dir>]';
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const VALUE_FLAGS = ['--case', '--variant', '--runs', '--model', '--effort', '--cases', '--out', '--raw-dir', '--timeout-min', '--max-budget-usd', '--regrade'];
 const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
@@ -27,10 +30,11 @@ const TOOLS = 'Read,Grep,Glob,Bash';
 const GIT_ENV = { GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'uploadpack.allowAnySHA1InWant', GIT_CONFIG_VALUE_0: 'true' };
 
 // Pure: argv → validated options. Throws with the offending flag.
-export function parseArgs(argv, today = new Date().toISOString().slice(0, 10)) {
+export function parseArgs(argv) {
   const v = {};
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i] === '--dry-run') v.dryRun = true;
+    else if (argv[i] === '--overwrite') v.overwrite = true;
     else if (VALUE_FLAGS.includes(argv[i])) {
       if (i + 1 >= argv.length) throw new Error(`${argv[i]} requires a value`);
       v[argv[i].slice(2)] = argv[(i += 1)];
@@ -53,9 +57,25 @@ export function parseArgs(argv, today = new Date().toISOString().slice(0, 10)) {
     runs: int('runs', 1, 1, 10), timeoutMin: int('timeout-min', 15, 1, 60), budget,
     regrade: v.regrade ?? null, model: v.model ?? null, effort: v.effort ?? null, dryRun: Boolean(v.dryRun),
     casesFile: v.cases ?? join(ROOT, 'evals/code-reviewer/cases.json'),
-    out: v.out ?? join(ROOT, `evals/results/${today}-code-reviewer.json`),
-    rawDir: v['raw-dir'] ?? join(ROOT, `evals/results/raw/${today}`),
+    overwrite: Boolean(v.overwrite), out: v.out ?? null, rawDir: v['raw-dir'] ?? null,
   };
+}
+
+// Pure: { out, rawDir } for a fresh run, or — with `saved` (the parsed input of --regrade) — for a regrade.
+// Raw outputs are namespaced by the results file, so two experiments never share (and overwrite) a directory.
+export function resolvePaths(opts, { saved = null, today = new Date().toISOString().slice(0, 10) } = {}) {
+  if (saved) {
+    const input = resolve(opts.regrade);
+    const recorded = typeof saved.raw_dir === 'string' && saved.raw_dir ? saved.raw_dir : `raw/${String(saved.generated).slice(0, 10)}`;
+    return { out: opts.out ?? input, rawDir: opts.rawDir ?? resolve(dirname(input), recorded) };
+  }
+  const out = opts.out ?? join(ROOT, `evals/results/${today}-code-reviewer.json`);
+  return { out, rawDir: opts.rawDir ?? join(dirname(out), 'raw', basename(out, '.json')) };
+}
+
+// Pure: the location written into the results file, relative to it.
+export function recordedRawDir(out, rawDir) {
+  return relative(dirname(resolve(out)), resolve(rawDir)).split(sep).join('/');
 }
 
 // Pure: the agent definition without its YAML frontmatter.
@@ -181,7 +201,7 @@ export function selectCases(cases, caseId) {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
-  exitOnUnknownFlag(args, { value: VALUE_FLAGS, bool: ['--dry-run'] }, USAGE);
+  exitOnUnknownFlag(args, { value: VALUE_FLAGS, bool: ['--dry-run', '--overwrite'] }, USAGE);
   let opts;
   let cases;
   try {
@@ -197,8 +217,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   if (opts.regrade) {
     try {
       const saved = JSON.parse(readFileSync(opts.regrade, 'utf8'));
-      const results = regradeResults(saved.results, cases, (id, variant, n) => readFileSync(join(opts.rawDir, `${id}-${variant}-${n}.md`), 'utf8'));
-      writeFileSync(opts.out, `${JSON.stringify({ ...saved, regraded: new Date().toISOString(), summary: summarize(results), results }, null, 2)}\n`);
+      const { out, rawDir } = resolvePaths(opts, { saved });
+      const results = regradeResults(saved.results, cases, (id, variant, n) => readFileSync(join(rawDir, `${id}-${variant}-${n}.md`), 'utf8'));
+      writeFileSync(out, `${JSON.stringify({ ...saved, raw_dir: recordedRawDir(out, rawDir), regraded: new Date().toISOString(), summary: summarize(results), results }, null, 2)}\n`);
       console.log(JSON.stringify(summarize(results), null, 2));
       process.exit(0);
     } catch (err) {
@@ -206,19 +227,24 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       process.exit(1);
     }
   }
+  const { out, rawDir } = resolvePaths(opts);
   const total = cases.length * opts.variants.length * opts.runs;
   if (opts.dryRun) {
     console.log(`${total} run(s): ${cases.length} case(s) × ${opts.variants.join('+')} × ${opts.runs}; budget cap ${opts.budget} USD each (max ${(total * opts.budget).toFixed(0)} USD)`);
     process.exit(0);
   }
+  if (existsSync(out) && !opts.overwrite) {
+    console.error(`Error: ${out} already exists; pass --overwrite to replace that experiment, or another --out\n${USAGE}`);
+    process.exit(1);
+  }
   const systemPrompt = stripFrontmatter(readFileSync(join(ROOT, 'agents/code-reviewer.md'), 'utf8'));
-  mkdirSync(opts.rawDir, { recursive: true });
+  mkdirSync(rawDir, { recursive: true });
   const results = [];
   for (const c of cases) {
     for (const variant of opts.variants) {
       for (let n = 1; n <= opts.runs; n += 1) {
         const r = runOnce(c, variant, opts, systemPrompt);
-        if (r.raw) writeFileSync(join(opts.rawDir, `${c.id}-${variant}-${n}.md`), `${r.raw}\n`);
+        if (r.raw) writeFileSync(join(rawDir, `${c.id}-${variant}-${n}.md`), `${r.raw}\n`);
         delete r.raw;
         results.push(r);
         console.error(`${r.error ? 'ERROR' : r.pass ? 'PASS ' : 'FAIL '} ${c.id} ${variant} #${n}${r.error ? ` — ${r.error}` : r.pass ? '' : ` — ${r.reasons[0]}`}`);
@@ -227,8 +253,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
   const summary = summarize(results);
   const models = [...new Set(results.flatMap((r) => r.models ?? []))];
-  mkdirSync(dirname(opts.out), { recursive: true });
-  writeFileSync(opts.out, `${JSON.stringify({ schema_version: 1, generated: new Date().toISOString(), agent: 'code-reviewer', models, runs_per_case: opts.runs, effort: opts.effort, summary, results }, null, 2)}\n`);
+  mkdirSync(dirname(out), { recursive: true });
+  writeFileSync(out, `${JSON.stringify({ schema_version: 1, generated: new Date().toISOString(), agent: 'code-reviewer', raw_dir: recordedRawDir(out, rawDir), models, runs_per_case: opts.runs, effort: opts.effort, summary, results }, null, 2)}\n`);
   console.log(JSON.stringify(summary, null, 2));
   process.exit(results.some((r) => r.error) ? 2 : 0);
 }

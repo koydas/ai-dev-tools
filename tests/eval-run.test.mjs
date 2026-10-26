@@ -1,13 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync, execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   parseArgs, stripFrontmatter, buildPrompt, buildClaudeArgs, extractReview, parseClaudeResult,
-  summarize, prepareCheckout, runOnce, selectCases, regradeResults,
+  summarize, prepareCheckout, runOnce, selectCases, regradeResults, resolvePaths, recordedRawDir,
 } from '../scripts/eval-run.mjs';
 
 const SCRIPT = fileURLToPath(new URL('../scripts/eval-run.mjs', import.meta.url));
@@ -23,11 +23,35 @@ const claudeJson = (result, extra = {}) => JSON.stringify({ result, total_cost_u
 const fakeExec = (reply) => (cmd) => (cmd === 'git' ? { status: 0, stdout: '', stderr: '' } : reply);
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
 
-test('parseArgs: defaults', () => {
-  const o = parseArgs([], '2026-01-02');
-  assert.deepEqual([o.variants, o.runs, o.timeoutMin, o.budget, o.model, o.dryRun], [['defect', 'fixed'], 1, 15, 3, null, false]);
-  assert.match(o.out, /evals\/results\/2026-01-02-code-reviewer\.json$/);
-  assert.match(o.rawDir, /evals\/results\/raw\/2026-01-02$/);
+test('parseArgs: defaults (paths are resolved later, by resolvePaths)', () => {
+  const o = parseArgs([]);
+  assert.deepEqual([o.variants, o.runs, o.timeoutMin, o.budget, o.model, o.dryRun, o.overwrite, o.out, o.rawDir], [['defect', 'fixed'], 1, 15, 3, null, false, false, null, null]);
+  assert.equal(parseArgs(['--overwrite']).overwrite, true);
+});
+
+test('resolvePaths: a fresh run namespaces raw outputs by its results file', () => {
+  const a = resolvePaths(parseArgs([]), { today: '2026-01-02' });
+  assert.match(a.out, /evals\/results\/2026-01-02-code-reviewer\.json$/);
+  assert.match(a.rawDir, /evals\/results\/raw\/2026-01-02-code-reviewer$/);
+  const b = resolvePaths(parseArgs(['--out', '/x/exp-b.json']), { today: '2026-01-02' });
+  assert.deepEqual(b, { out: '/x/exp-b.json', rawDir: '/x/raw/exp-b' });
+  assert.notEqual(a.rawDir, b.rawDir);
+  assert.equal(resolvePaths(parseArgs(['--out', '/x/e.json', '--raw-dir', '/y']), {}).rawDir, '/y');
+});
+
+test('resolvePaths: a regrade defaults to the input file and its recorded raw_dir, whatever today is', () => {
+  const o = parseArgs(['--regrade', '/r/2026-01-01-code-reviewer.json']);
+  assert.deepEqual(resolvePaths(o, { saved: { raw_dir: 'raw/exp', generated: '2026-01-01T10:00:00Z' }, today: '2030-01-01' }), { out: '/r/2026-01-01-code-reviewer.json', rawDir: '/r/raw/exp' });
+  // results saved before raw_dir existed: raw/<generated date>
+  assert.equal(resolvePaths(o, { saved: { generated: '2026-01-01T10:00:00Z' } }).rawDir, '/r/raw/2026-01-01');
+  // explicit overrides win
+  const x = parseArgs(['--regrade', '/r/a.json', '--out', '/o.json', '--raw-dir', '/w']);
+  assert.deepEqual(resolvePaths(x, { saved: { raw_dir: 'raw/a' } }), { out: '/o.json', rawDir: '/w' });
+});
+
+test('recordedRawDir: relative to the results file, with forward slashes', () => {
+  assert.equal(recordedRawDir('/r/a.json', '/r/raw/a'), 'raw/a');
+  assert.equal(recordedRawDir('/r/a.json', '/elsewhere/raw'), '../elsewhere/raw');
 });
 
 test('parseArgs: values are applied', () => {
@@ -212,6 +236,39 @@ test('CLI --regrade: re-grades saved results without calling claude', () => {
     assert.equal(JSON.parse(r.stdout).defect.passed, 1);
     assert.equal(JSON.parse(readFileSync(out, 'utf8')).results[0].pass, true);
     assert.equal(cli(['--regrade', join(dir, 'nope.json'), '--cases', cases, '--out', out, '--raw-dir', dir]).status, 1);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('CLI: an existing results file is refused without --overwrite, before any call; --dry-run is unaffected', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'eval-over-'));
+  try {
+    const out = join(dir, 'exp.json');
+    writeFileSync(out, '{}');
+    const r = cli(['--case', 'pr27-utf8-split-chunks', '--out', out]);
+    assert.equal(r.status, 1);
+    assert.match(r.stderr, /already exists; pass --overwrite/);
+    assert.equal(readFileSync(out, 'utf8'), '{}');
+    assert.equal(cli(['--dry-run', '--out', out]).status, 0);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('CLI --regrade: no flags needed — in place, raw outputs from the recorded raw_dir', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'eval-regrade2-'));
+  try {
+    const cases = join(dir, 'cases.json');
+    const saved = join(dir, 'exp.json');
+    writeFileSync(cases, JSON.stringify({ schema_version: 1, cases: [CASE] }));
+    writeFileSync(saved, JSON.stringify({ schema_version: 1, generated: '2020-01-01T00:00:00Z', raw_dir: 'raw/exp', results: [{ id: 'c1', variant: 'defect', pass: false }] }));
+    mkdirSync(join(dir, 'raw', 'exp'), { recursive: true });
+    writeFileSync(join(dir, 'raw', 'exp', 'c1-defect-1.md'), REVIEW('- `scripts/a.mjs:1` — chunk split'));
+    const r = cli(['--regrade', saved, '--cases', cases]);
+    assert.equal(r.status, 0, r.stderr);
+    const after = JSON.parse(readFileSync(saved, 'utf8'));
+    assert.deepEqual([after.results[0].pass, after.raw_dir], [true, 'raw/exp']);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
