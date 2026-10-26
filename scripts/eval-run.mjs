@@ -92,16 +92,18 @@ export function extractReview(text) {
   return i === -1 ? s.trim() : s.slice(i).trim();
 }
 
-// Pure: `claude --output-format json` stdout → { text, costUsd, durationMs, models, isError }.
+// Pure: `claude --output-format json` stdout → { text, costUsd, durationMs, models, isError, denials }.
+// `denials` = tool calls the permission mode refused ("Bash: <command>"): a run with any is a weaker review.
 export function parseClaudeResult(stdout) {
   const j = JSON.parse(stdout);
   return {
     text: typeof j.result === 'string' ? j.result : '', isError: Boolean(j.is_error) || j.subtype?.startsWith('error') === true,
     costUsd: Number(j.total_cost_usd) || 0, durationMs: Number(j.duration_ms) || 0, models: Object.keys(j.modelUsage ?? {}),
+    denials: (Array.isArray(j.permission_denials) ? j.permission_denials : []).map((d) => `${d?.tool_name ?? '?'}: ${String(d?.tool_input?.command ?? d?.tool_input?.file_path ?? '').slice(0, 120)}`),
   };
 }
 
-// Pure: results → { defect: { runs, passed, errored, rate }, fixed: …, cost_usd }. Errored runs leave the rate.
+// Pure: results → { defect: { runs, passed, errored, denied, rate }, fixed: …, cost_usd }. Errored runs leave the rate.
 export function summarize(results) {
   const out = { cost_usd: 0 };
   for (const variant of ['defect', 'fixed']) {
@@ -110,7 +112,7 @@ export function summarize(results) {
     const errored = rs.filter((r) => r.error).length;
     const passed = rs.filter((r) => r.pass).length;
     const graded = rs.length - errored;
-    out[variant] = { runs: rs.length, passed, errored, rate: graded ? Number((passed / graded).toFixed(3)) : null };
+    out[variant] = { runs: rs.length, passed, errored, denied: rs.filter((r) => r.denials?.length).length, rate: graded ? Number((passed / graded).toFixed(3)) : null };
   }
   out.cost_usd = Number(results.reduce((n, r) => n + (r.cost_usd || 0), 0).toFixed(4));
   return out;
@@ -139,6 +141,7 @@ export function runOnce(evalCase, variant, opts, systemPrompt, exec = run) {
     if (r.error || r.status !== 0) throw new Error(r.error?.code === 'ETIMEDOUT' ? `timeout after ${opts.timeoutMin} min` : `claude exited ${r.status}: ${String(r.stderr).split('\n')[0]}`);
     const res = parseClaudeResult(r.stdout);
     Object.assign(record, { cost_usd: res.costUsd, duration_ms: res.durationMs, models: res.models });
+    if (res.denials.length) record.denials = res.denials;
     if (res.isError) throw new Error('claude reported an error result');
     const review = extractReview(res.text);
     record.raw = review;

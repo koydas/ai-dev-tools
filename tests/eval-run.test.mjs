@@ -72,7 +72,9 @@ test('extractReview: drops prose before ### Status; unchanged when absent', () =
 });
 
 test('parseClaudeResult: fields, error subtype, invalid JSON throws', () => {
-  assert.deepEqual(parseClaudeResult(claudeJson('t')), { text: 't', isError: false, costUsd: 0.5, durationMs: 1200, models: ['claude-x'] });
+  assert.deepEqual(parseClaudeResult(claudeJson('t')), { text: 't', isError: false, costUsd: 0.5, durationMs: 1200, models: ['claude-x'], denials: [] });
+  const d = parseClaudeResult(claudeJson('t', { permission_denials: [{ tool_name: 'Bash', tool_input: { command: 'cd /x && git diff' } }, {}] }));
+  assert.deepEqual(d.denials, ['Bash: cd /x && git diff', '?: ']);
   assert.equal(parseClaudeResult(claudeJson('t', { is_error: true })).isError, true);
   assert.equal(parseClaudeResult(claudeJson('', { subtype: 'error_max_budget_usd' })).isError, true);
   assert.throws(() => parseClaudeResult('not json'));
@@ -80,11 +82,11 @@ test('parseClaudeResult: fields, error subtype, invalid JSON throws', () => {
 
 test('summarize: rate per variant over graded runs; errored runs leave the rate; cost summed', () => {
   const s = summarize([
-    { variant: 'defect', pass: true, cost_usd: 1 }, { variant: 'defect', pass: false, cost_usd: 0.5 },
+    { variant: 'defect', pass: true, cost_usd: 1 }, { variant: 'defect', pass: false, cost_usd: 0.5, denials: [] },
     { variant: 'defect', pass: false, error: 'boom' }, { variant: 'fixed', pass: true, cost_usd: 0.25 },
   ]);
-  assert.deepEqual(s.defect, { runs: 3, passed: 1, errored: 1, rate: 0.5 });
-  assert.deepEqual(s.fixed, { runs: 1, passed: 1, errored: 0, rate: 1 });
+  assert.deepEqual(s.defect, { runs: 3, passed: 1, errored: 1, denied: 0, rate: 0.5 });
+  assert.deepEqual(s.fixed, { runs: 1, passed: 1, errored: 0, denied: 0, rate: 1 });
   assert.equal(s.cost_usd, 1.75);
   assert.equal(summarize([{ variant: 'defect', error: 'x' }]).defect.rate, null);
   assert.deepEqual(summarize([]), { cost_usd: 0 });
@@ -101,6 +103,12 @@ test('runOnce: a defect found passes and carries cost, status and the raw review
   assert.equal(r.pass, true);
   assert.deepEqual([r.status, r.cost_usd, r.models, r.error], ['NEEDS_REVIEW', 0.5, ['claude-x'], undefined]);
   assert.match(r.raw, /^### Status/);
+});
+
+test('runOnce: permission denials are kept on the record', () => {
+  const r = runOnce(CASE, 'defect', OPTS, 's', fakeExec({ status: 0, stdout: claudeJson(REVIEW('- none'), { permission_denials: [{ tool_name: 'Bash', tool_input: { command: 'ls' } }] }), stderr: '' }));
+  assert.deepEqual(r.denials, ['Bash: ls']);
+  assert.equal(summarize([r]).defect.denied, 1);
 });
 
 test('runOnce: a miss and a contract violation fail with a reason, they are not errors', () => {
