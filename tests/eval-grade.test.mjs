@@ -55,7 +55,7 @@ test('validateCases: schema_version, empty and missing cases, wrong agent', () =
   assert.ok(validateCases(null).length > 0);
 });
 
-test('dataset integrity: shas resolve, the fix is the head child, the path is in the PR diff and touched by the fix', (t) => {
+test('dataset integrity: shas resolve, base is an ancestor of head, the fix is the head child, the path is in the PR diff and touched by the fix', (t) => {
   for (const c of DATASET.cases) {
     const shas = [c.base, c.head, c.fixed_head];
     const missing = shas.filter((s) => { try { git('cat-file', '-e', `${s}^{commit}`); return false; } catch { return true; } });
@@ -64,6 +64,7 @@ test('dataset integrity: shas resolve, the fix is the head child, the path is in
       assert.fail(`${c.id}: commits not found ${missing.join(', ')}`);
     }
     assert.equal(git('rev-parse', `${c.fixed_head}^`), c.head, `${c.id}: fixed_head must be the child of head`);
+    git('merge-base', '--is-ancestor', c.base, c.head); // throws (test fails) when base is not an ancestor of head
     assert.ok(git('diff', '--name-only', c.base, c.head).split('\n').includes(c.finding.path), `${c.id}: path not in base..head`);
     assert.ok(git('diff', '--name-only', c.head, c.fixed_head).split('\n').includes(c.finding.path), `${c.id}: fix does not touch path`);
   }

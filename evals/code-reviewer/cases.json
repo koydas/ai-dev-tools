@@ -184,7 +184,7 @@
       "ac": [
         "feat(pr-review, pr-fixer): report a conflicting PR; handoff from the loop's conflicts-fix"
       ],
-      "base": "db5e17aed481340db5176451b6127f0331f49e8e",
+      "base": "c95928f760bebd319758a167dc189e282f03aa90",
       "head": "6ed433bf1566b4d51b614f7b4b33754a91621310",
       "fixed_head": "2622e90b307498f8df42f0571905dc3b93f0f9aa",
       "finding": {
