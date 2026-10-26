@@ -8,7 +8,8 @@
 // Rules: every case is pinned and keeps its pin (id, inputs, finding path and pattern are immutable; cases are
 // never removed); floor.json never goes below the pinned floor; the newest committed results cover every case in
 // both variants, carry no errored or denied run, a summary equal to the one recomputed from the runs, and rates
-// at or above the floor. Node ≥ 20, no external dependencies
+// at or above the floor. "Newest" = latest `generated` timestamp, not the file name; a results file that is not
+// valid JSON or has no valid `generated` is itself a violation, so none can sit outside the check. Node ≥ 20, no external dependencies
 
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
@@ -32,8 +33,14 @@ export function pinsFor(cases) {
 
 const isRate = (v) => typeof v === 'number' && v >= 0 && v <= 1;
 
-// Pure: { cases, pins: { cases, floor }, floor, results: { name, doc } | null } → violations (empty when clean).
-export function checkFloor({ cases, pins, floor, results }) {
+// Pure: the results file to check — latest `generated`, ties broken by name — or null.
+export function newestResults(files) {
+  const stamped = files.filter((f) => Number.isFinite(Date.parse(f.doc?.generated)));
+  return stamped.sort((a, b) => Date.parse(a.doc.generated) - Date.parse(b.doc.generated) || a.name.localeCompare(b.name)).at(-1) ?? null;
+}
+
+// Pure: { cases, pins: { cases, floor }, floor, results: [{ name, doc }] } → violations (empty when clean).
+export function checkFloor({ cases, pins, floor, results: files }) {
   const v = [];
   const live = new Map(cases.map((c) => [c.id, c]));
 
@@ -48,8 +55,13 @@ export function checkFloor({ cases, pins, floor, results }) {
     else if (floor[k] < pins.floor[k]) v.push(`floor.${k}: ${floor[k]} is below the pinned ${pins.floor[k]} — thresholds only tighten`);
   }
 
-  if (!results) return [...v, 'results: no evals/results/*.json — run node scripts/eval-run.mjs and commit the file'];
-  const { name, doc } = results;
+  for (const f of files) {
+    if (f.doc === null) v.push(`${f.name}: not valid JSON`);
+    else if (!Number.isFinite(Date.parse(f.doc?.generated))) v.push(`${f.name}: missing or invalid "generated" timestamp`);
+  }
+  const newest = newestResults(files);
+  if (!newest) return [...v, 'results: no evals/results/*.json — run node scripts/eval-run.mjs and commit the file'];
+  const { name, doc } = newest;
   const rs = Array.isArray(doc?.results) ? doc.results : [];
   if (!rs.length) return [...v, `${name}: has no results`];
 
@@ -76,12 +88,14 @@ export function checkFloor({ cases, pins, floor, results }) {
 export function loadInputs(root = ROOT) {
   const json = (p) => JSON.parse(readFileSync(join(root, p), 'utf8'));
   const dir = join(root, 'evals/results');
-  const newest = readdirSync(dir).filter((f) => f.endsWith('.json')).sort().at(-1);
+  const results = readdirSync(dir).filter((f) => f.endsWith('.json')).sort().map((f) => {
+    try { return { name: `evals/results/${f}`, doc: json(`evals/results/${f}`) }; } catch { return { name: `evals/results/${f}`, doc: null }; }
+  });
   return {
     cases: json('evals/code-reviewer/cases.json').cases,
     floor: json('evals/code-reviewer/floor.json'),
     pins: json('tests/fixtures/eval-floor.json'),
-    results: newest ? { name: `evals/results/${newest}`, doc: json(`evals/results/${newest}`) } : null,
+    results,
   };
 }
 
