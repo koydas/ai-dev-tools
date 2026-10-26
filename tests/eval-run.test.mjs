@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   parseArgs, stripFrontmatter, buildPrompt, buildClaudeArgs, extractReview, parseClaudeResult,
-  summarize, prepareCheckout, runOnce, selectCases,
+  summarize, prepareCheckout, runOnce, selectCases, regradeResults,
 } from '../scripts/eval-run.mjs';
 
 const SCRIPT = fileURLToPath(new URL('../scripts/eval-run.mjs', import.meta.url));
@@ -177,6 +177,41 @@ test('CLI: bad flag, bad value, unknown case and invalid cases file exit 1 with 
       assert.match(r.stderr, /^Error: /);
       assert.match(r.stderr, /Usage: /);
     }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('regradeResults: grades saved outputs against the current case; errored runs and run numbering', () => {
+  const hit = REVIEW('- `scripts/a.mjs:1` — chunk split');
+  const miss = REVIEW('- `scripts/b.mjs` — other');
+  const raws = { 'c1/defect/1': miss, 'c1/defect/2': hit };
+  const asked = [];
+  const out = regradeResults(
+    [{ id: 'c1', variant: 'defect', pass: true }, { id: 'c1', variant: 'defect', pass: false }, { id: 'c1', variant: 'fixed', error: 'boom' }],
+    [CASE], (id, variant, n) => { asked.push(`${id}/${variant}/${n}`); return raws[`${id}/${variant}/${n}`]; },
+  );
+  assert.deepEqual(out.map((r) => r.pass), [false, true, undefined]);
+  assert.equal(out[2].error, 'boom');
+  assert.deepEqual(asked, ['c1/defect/1', 'c1/defect/2']);
+  assert.equal(out[1].status, 'NEEDS_REVIEW');
+  assert.throws(() => regradeResults([{ id: 'zz', variant: 'defect' }], [CASE], () => ''), /no case "zz"/);
+});
+
+test('CLI --regrade: re-grades saved results without calling claude', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'eval-regrade-'));
+  try {
+    const cases = join(dir, 'cases.json');
+    const saved = join(dir, 'saved.json');
+    const out = join(dir, 'out.json');
+    writeFileSync(cases, JSON.stringify({ schema_version: 1, cases: [CASE] }));
+    writeFileSync(saved, JSON.stringify({ schema_version: 1, results: [{ id: 'c1', variant: 'defect', pass: false }] }));
+    writeFileSync(join(dir, 'c1-defect-1.md'), REVIEW('- `scripts/a.mjs:1` — chunk split'));
+    const r = cli(['--regrade', saved, '--cases', cases, '--out', out, '--raw-dir', dir]);
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(JSON.parse(r.stdout).defect.passed, 1);
+    assert.equal(JSON.parse(readFileSync(out, 'utf8')).results[0].pass, true);
+    assert.equal(cli(['--regrade', join(dir, 'nope.json'), '--cases', cases, '--out', out, '--raw-dir', dir]).status, 1);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

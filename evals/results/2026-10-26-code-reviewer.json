@@ -1,0 +1,401 @@
+{
+  "schema_version": 1,
+  "generated": "2026-10-26T01:15:39.419Z",
+  "agent": "code-reviewer",
+  "models": [
+    "claude-haiku-5-5",
+    "claude-sonnet-5-5"
+  ],
+  "runs_per_case": 1,
+  "effort": null,
+  "summary": {
+    "cost_usd": 2.2186,
+    "defect": {
+      "runs": 12,
+      "passed": 0,
+      "errored": 0,
+      "denied": 0,
+      "rate": 0
+    },
+    "fixed": {
+      "runs": 12,
+      "passed": 12,
+      "errored": 0,
+      "denied": 0,
+      "rate": 1
+    }
+  },
+  "results": [
+    {
+      "id": "pr26-legacy-skills-link",
+      "variant": "defect",
+      "pass": false,
+      "reasons": [
+        "Status is DONE, expected NEEDS_REVIEW",
+        "no blocking item names scripts/onboarding.mjs and matches /legacy|stale|dangling|obsolete|relocat|old clone|previous clone/i"
+      ],
+      "status": "DONE",
+      "cost_usd": 0.10289800000000002,
+      "duration_ms": 23633,
+      "models": [
+        "claude-haiku-5-5",
+        "claude-sonnet-5-5"
+      ],
+      "matched": []
+    },
+    {
+      "id": "pr26-legacy-skills-link",
+      "variant": "fixed",
+      "pass": true,
+      "reasons": [],
+      "status": "DONE",
+      "cost_usd": 0.0902201,
+      "duration_ms": 18284,
+      "models": [
+        "claude-haiku-5-5",
+        "claude-sonnet-5-5"
+      ],
+      "matched": []
+    },
+    {
+      "id": "pr27-utf8-split-chunks",
+      "variant": "defect",
+      "pass": false,
+      "reasons": [
+        "Status is DONE, expected NEEDS_REVIEW",
+        "no blocking item names scripts/mcp-server.mjs and matches /utf-?8|multi-?byte|setEncoding|chunk/i"
+      ],
+      "status": "DONE",
+      "cost_usd": 0.093932,
+      "duration_ms": 17057,
+      "models": [
+        "claude-haiku-5-5",
+        "claude-sonnet-5-5"
+      ],
+      "matched": []
+    },
+    {
+      "id": "pr27-utf8-split-chunks",
+      "variant": "fixed",
+      "pass": true,
+      "reasons": [],
+      "status": "DONE",
+      "cost_usd": 0.10345259999999999,
+      "duration_ms": 20115,
+      "models": [
+        "claude-haiku-5-5",
+        "claude-sonnet-5-5"
+      ],
+      "matched": []
+    },
+    {
+      "id": "pr31-redirect-downgrade",
+      "variant": "defect",
+      "pass": false,
+      "reasons": [
+        "Status is DONE, expected NEEDS_REVIEW",
+        "no blocking item names scripts/loop-insights.mjs and matches /redirect/i"
+      ],
+      "status": "DONE",
+      "cost_usd": 0.11376990000000001,
+      "duration_ms": 23105,
+      "models": [
+        "claude-haiku-5-5",
+        "claude-sonnet-5-5"
+      ],
+      "matched": []
+    },
+    {
+      "id": "pr31-redirect-downgrade",
+      "variant": "fixed",
+      "pass": true,
+      "reasons": [],
+      "status": "DONE",
+      "cost_usd": 0.1039862,
+      "duration_ms": 21642,
+      "models": [
+        "claude-haiku-5-5",
+        "claude-sonnet-5-5"
+      ],
+      "matched": []
+    },
+    {
+      "id": "pr36-test-pins-counts",
+      "variant": "defect",
+      "pass": false,
+      "reasons": [
+        "Status is DONE, expected NEEDS_REVIEW",
+        "no blocking item names tests/build-dashboard.test.mjs and matches /160|pinn?ed|hard-?cod|brittle|newer sidecar|new sidecar/i"
+      ],
+      "status": "DONE",
+      "cost_usd": 0.0801412,
+      "duration_ms": 18228,
+      "models": [
+        "claude-haiku-5-5",
+        "claude-sonnet-5-5"
+      ],
+      "matched": []
+    },
+    {
+      "id": "pr36-test-pins-counts",
+      "variant": "fixed",
+      "pass": true,
+      "reasons": [],
+      "status": "DONE",
+      "cost_usd": 0.0837377,
+      "duration_ms": 18458,
+      "models": [
+        "claude-haiku-5-5",
+        "claude-sonnet-5-5"
+      ],
+      "matched": []
+    },
+    {
+      "id": "pr38-thread-path-dropped",
+      "variant": "defect",
+      "pass": false,
+      "reasons": [
+        "Status is DONE, expected NEEDS_REVIEW",
+        "no blocking item names scripts/review-chain-metrics.mjs and matches /asMember|beyond (the )?review|cited by|undefined/i"
+      ],
+      "status": "DONE",
+      "cost_usd": 0.10833860000000001,
+      "duration_ms": 25367,
+      "models": [
+        "claude-haiku-5-5",
+        "claude-sonnet-5-5"
+      ],
+      "matched": []
+    },
+    {
+      "id": "pr38-thread-path-dropped",
+      "variant": "fixed",
+      "pass": true,
+      "reasons": [],
+      "status": "DONE",
+      "cost_usd": 0.061349900000000006,
+      "duration_ms": 18537,
+      "models": [
+        "claude-haiku-5-5",
+        "claude-sonnet-5-5"
+      ],
+      "matched": []
+    },
+    {
+      "id": "pr38-recent-silent-cap",
+      "variant": "defect",
+      "pass": false,
+      "reasons": [
+        "Status is DONE, expected NEEDS_REVIEW",
+        "no blocking item names scripts/review-chain-metrics.mjs and matches /--recent.*(100|cap|truncat|silent|page)|(100|cap|truncat|silent).*--recent|paginat|one page/i"
+      ],
+      "status": "DONE",
+      "cost_usd": 0.08598860000000001,
+      "duration_ms": 27364,
+      "models": [
+        "claude-haiku-5-5",
+        "claude-sonnet-5-5"
+      ],
+      "matched": []
+    },
+    {
+      "id": "pr38-recent-silent-cap",
+      "variant": "fixed",
+      "pass": true,
+      "reasons": [],
+      "status": "DONE",
+      "cost_usd": 0.1121834,
+      "duration_ms": 26025,
+      "models": [
+        "claude-haiku-5-5",
+        "claude-sonnet-5-5"
+      ],
+      "matched": []
+    },
+    {
+      "id": "pr38-generated-counted-human",
+      "variant": "defect",
+      "pass": false,
+      "reasons": [
+        "no blocking item names scripts/review-chain-metrics.mjs and matches /generated|signature|not human|as human|human feedback/i"
+      ],
+      "status": "NEEDS_REVIEW",
+      "cost_usd": 0.0808203,
+      "duration_ms": 23762,
+      "models": [
+        "claude-haiku-5-5",
+        "claude-sonnet-5-5"
+      ],
+      "matched": []
+    },
+    {
+      "id": "pr38-generated-counted-human",
+      "variant": "fixed",
+      "pass": true,
+      "reasons": [],
+      "status": "DONE",
+      "cost_usd": 0.0744942,
+      "duration_ms": 21742,
+      "models": [
+        "claude-haiku-5-5",
+        "claude-sonnet-5-5"
+      ],
+      "matched": []
+    },
+    {
+      "id": "pr38-rename-previous-filename",
+      "variant": "defect",
+      "pass": false,
+      "reasons": [
+        "Status is DONE, expected NEEDS_REVIEW",
+        "no blocking item names scripts/review-chain-metrics.mjs and matches /renam|previous_filename/i"
+      ],
+      "status": "DONE",
+      "cost_usd": 0.135443,
+      "duration_ms": 36615,
+      "models": [
+        "claude-haiku-5-5",
+        "claude-sonnet-5-5"
+      ],
+      "matched": []
+    },
+    {
+      "id": "pr38-rename-previous-filename",
+      "variant": "fixed",
+      "pass": true,
+      "reasons": [],
+      "status": "DONE",
+      "cost_usd": 0.11170589999999998,
+      "duration_ms": 24352,
+      "models": [
+        "claude-haiku-5-5",
+        "claude-sonnet-5-5"
+      ],
+      "matched": []
+    },
+    {
+      "id": "pr38-compare-300-files",
+      "variant": "defect",
+      "pass": false,
+      "reasons": [
+        "Status is DONE, expected NEEDS_REVIEW",
+        "no blocking item names scripts/review-chain-metrics.mjs and matches /\\b300\\b|truncat|files? limit/i"
+      ],
+      "status": "DONE",
+      "cost_usd": 0.10098639999999999,
+      "duration_ms": 30403,
+      "models": [
+        "claude-haiku-5-5",
+        "claude-sonnet-5-5"
+      ],
+      "matched": []
+    },
+    {
+      "id": "pr38-compare-300-files",
+      "variant": "fixed",
+      "pass": true,
+      "reasons": [],
+      "status": "DONE",
+      "cost_usd": 0.08426229999999998,
+      "duration_ms": 24272,
+      "models": [
+        "claude-haiku-5-5",
+        "claude-sonnet-5-5"
+      ],
+      "matched": []
+    },
+    {
+      "id": "pr38-escaped-pipe",
+      "variant": "defect",
+      "pass": false,
+      "reasons": [
+        "no blocking item names scripts/review-chain-metrics.mjs and matches /\\bpipes?\\b|escaped|delimiter/i"
+      ],
+      "status": "NEEDS_REVIEW",
+      "cost_usd": 0.09208780000000001,
+      "duration_ms": 28949,
+      "models": [
+        "claude-haiku-5-5",
+        "claude-sonnet-5-5"
+      ],
+      "matched": []
+    },
+    {
+      "id": "pr38-escaped-pipe",
+      "variant": "fixed",
+      "pass": true,
+      "reasons": [],
+      "status": "NEEDS_REVIEW",
+      "cost_usd": 0.12346920000000002,
+      "duration_ms": 28380,
+      "models": [
+        "claude-haiku-5-5",
+        "claude-sonnet-5-5"
+      ],
+      "matched": []
+    },
+    {
+      "id": "pr42-small-sample-rates",
+      "variant": "defect",
+      "pass": false,
+      "reasons": [
+        "Status is DONE, expected NEEDS_REVIEW",
+        "no blocking item names scripts/build-dashboard.mjs and matches /small.?sample|sample size|too few|caveat|SMALL_SAMPLE/i"
+      ],
+      "status": "DONE",
+      "cost_usd": 0.0674625,
+      "duration_ms": 23903,
+      "models": [
+        "claude-haiku-5-5",
+        "claude-sonnet-5-5"
+      ],
+      "matched": []
+    },
+    {
+      "id": "pr42-small-sample-rates",
+      "variant": "fixed",
+      "pass": true,
+      "reasons": [],
+      "status": "DONE",
+      "cost_usd": 0.0675643,
+      "duration_ms": 20675,
+      "models": [
+        "claude-haiku-5-5",
+        "claude-sonnet-5-5"
+      ],
+      "matched": []
+    },
+    {
+      "id": "pr45-mergeable-null-on-branch",
+      "variant": "defect",
+      "pass": false,
+      "reasons": [
+        "Status is DONE, expected NEEDS_REVIEW",
+        "no blocking item names scripts/gh-get-pr.mjs and matches /mergeable/i"
+      ],
+      "status": "DONE",
+      "cost_usd": 0.06861690000000001,
+      "duration_ms": 20452,
+      "models": [
+        "claude-haiku-5-5",
+        "claude-sonnet-5-5"
+      ],
+      "matched": []
+    },
+    {
+      "id": "pr45-mergeable-null-on-branch",
+      "variant": "fixed",
+      "pass": true,
+      "reasons": [],
+      "status": "DONE",
+      "cost_usd": 0.0717013,
+      "duration_ms": 17753,
+      "models": [
+        "claude-haiku-5-5",
+        "claude-sonnet-5-5"
+      ],
+      "matched": []
+    }
+  ],
+  "regraded": "2026-10-26T01:16:22.070Z"
+}

@@ -3,6 +3,7 @@
 // Usage: node scripts/eval-run.mjs [--case <id>] [--variant defect|fixed|both] [--runs <1..10>] [--model <m>]
 //          [--effort <level>] [--cases <file>] [--out <file>] [--raw-dir <dir>] [--timeout-min <n>]
 //          [--max-budget-usd <n>] [--dry-run]
+//        node scripts/eval-run.mjs --regrade <results.json> [--cases <file>] [--out <file>] [--raw-dir <dir>]   (re-grade saved outputs, no LLM call)
 // Each run reviews an isolated repo holding only the history up to the reviewed commit (`head` for the defect
 // variant, `fixed_head` for the fixed one), so the fix cannot be read from git. It calls `claude -p`: it costs
 // money and is not deterministic — run it by hand, never in CI. Exit 1: bad input; 2: a run errored.
@@ -17,9 +18,9 @@ import { exitOnUnknownFlag } from './gh-transport.mjs';
 import { gradeReview, validateCases } from './eval-grade.mjs';
 import { checkAgentOutput } from './check-agent-output.mjs';
 
-const USAGE = 'Usage: node scripts/eval-run.mjs [--case <id>] [--variant defect|fixed|both] [--runs <1..10>] [--model <m>] [--effort <level>] [--cases <file>] [--out <file>] [--raw-dir <dir>] [--timeout-min <n>] [--max-budget-usd <n>] [--dry-run]';
+const USAGE = 'Usage: node scripts/eval-run.mjs [--case <id>] [--variant defect|fixed|both] [--runs <1..10>] [--model <m>] [--effort <level>] [--cases <file>] [--out <file>] [--raw-dir <dir>] [--timeout-min <n>] [--max-budget-usd <n>] [--dry-run] | --regrade <results.json> [--cases <file>] [--out <file>] [--raw-dir <dir>]';
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const VALUE_FLAGS = ['--case', '--variant', '--runs', '--model', '--effort', '--cases', '--out', '--raw-dir', '--timeout-min', '--max-budget-usd'];
+const VALUE_FLAGS = ['--case', '--variant', '--runs', '--model', '--effort', '--cases', '--out', '--raw-dir', '--timeout-min', '--max-budget-usd', '--regrade'];
 const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
 const TOOLS = 'Read,Grep,Glob,Bash';
 // Pinned so a result is comparable: the eval measures the agent definition, not the CLI defaults.
@@ -50,7 +51,7 @@ export function parseArgs(argv, today = new Date().toISOString().slice(0, 10)) {
   return {
     caseId: v.case ?? null, variants: variant === 'both' ? ['defect', 'fixed'] : [variant],
     runs: int('runs', 1, 1, 10), timeoutMin: int('timeout-min', 15, 1, 60), budget,
-    model: v.model ?? null, effort: v.effort ?? null, dryRun: Boolean(v.dryRun),
+    regrade: v.regrade ?? null, model: v.model ?? null, effort: v.effort ?? null, dryRun: Boolean(v.dryRun),
     casesFile: v.cases ?? join(ROOT, 'evals/code-reviewer/cases.json'),
     out: v.out ?? join(ROOT, `evals/results/${today}-code-reviewer.json`),
     rawDir: v['raw-dir'] ?? join(ROOT, `evals/results/raw/${today}`),
@@ -156,6 +157,22 @@ export function runOnce(evalCase, variant, opts, systemPrompt, exec = run) {
   return record;
 }
 
+// Pure (readRaw injected): re-grade saved results against the current cases. Errored runs stay as they were.
+// The n-th result of an (id, variant) is run n, matching the raw file names.
+export function regradeResults(results, cases, readRaw) {
+  const seen = {};
+  return results.map((r) => {
+    const key = `${r.id}/${r.variant}`;
+    seen[key] = (seen[key] ?? 0) + 1;
+    if (r.error) return r;
+    const evalCase = cases.find((c) => c.id === r.id);
+    if (!evalCase) throw new Error(`no case "${r.id}" for a saved result`);
+    const review = readRaw(r.id, r.variant, seen[key]);
+    const { pass, reasons, matched } = gradeReview(review, evalCase, r.variant);
+    return { ...r, pass, reasons, matched, status: checkAgentOutput(review, { allowed: ['DONE', 'NEEDS_REVIEW'] }).status };
+  });
+}
+
 export function selectCases(cases, caseId) {
   const picked = caseId ? cases.filter((c) => c.id === caseId) : cases;
   if (!picked.length) throw new Error(`no case "${caseId}"`);
@@ -176,6 +193,18 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   } catch (err) {
     console.error(`Error: ${err.message}\n${USAGE}`);
     process.exit(1);
+  }
+  if (opts.regrade) {
+    try {
+      const saved = JSON.parse(readFileSync(opts.regrade, 'utf8'));
+      const results = regradeResults(saved.results, cases, (id, variant, n) => readFileSync(join(opts.rawDir, `${id}-${variant}-${n}.md`), 'utf8'));
+      writeFileSync(opts.out, `${JSON.stringify({ ...saved, regraded: new Date().toISOString(), summary: summarize(results), results }, null, 2)}\n`);
+      console.log(JSON.stringify(summarize(results), null, 2));
+      process.exit(0);
+    } catch (err) {
+      console.error(`Error: ${err.message}\n${USAGE}`);
+      process.exit(1);
+    }
   }
   const total = cases.length * opts.variants.length * opts.runs;
   if (opts.dryRun) {

@@ -29,7 +29,7 @@
       "fixed_head": "ae8167453f6a689fa63a1253ba7f28e1808a1d45",
       "finding": {
         "path": "scripts/mcp-server.mjs",
-        "pattern": "utf-?8|multi-?byte|setEncoding|split|chunk|decod",
+        "pattern": "utf-?8|multi-?byte|setEncoding|chunk",
         "summary": "Subprocess stdout/stderr chunks are appended as Buffers, so a multi-byte character split across chunks is replaced by U+FFFD with isError false."
       }
     },
@@ -61,7 +61,7 @@
       "fixed_head": "2ec139262ef5e6088e49e93a6127b8ab097b9e08",
       "finding": {
         "path": "tests/build-dashboard.test.mjs",
-        "pattern": "160|pinn?ed|hard-?cod|brittle|newer|latest|fixture",
+        "pattern": "160|pinn?ed|hard-?cod|brittle|newer sidecar|new sidecar",
         "summary": "The CLI test pins the first sidecar test counts (160/160), so adding a newer sidecar fails the test that gates the deploy."
       }
     },
@@ -77,7 +77,7 @@
       "fixed_head": "8ac50f9b5f7cc712e2ca2c4945167ed55da3b0d7",
       "finding": {
         "path": "scripts/review-chain-metrics.mjs",
-        "pattern": "path|asMember|beyond|cited",
+        "pattern": "asMember|beyond (the )?review|cited by|undefined",
         "summary": "asMember drops the REST comment path, so a thread on a file already cited by a report is counted as beyond the review."
       }
     },
@@ -93,7 +93,7 @@
       "fixed_head": "8ac50f9b5f7cc712e2ca2c4945167ed55da3b0d7",
       "finding": {
         "path": "scripts/review-chain-metrics.mjs",
-        "pattern": "recent|100|page|paginat|truncat|cap",
+        "pattern": "--recent.*(100|cap|truncat|silent|page)|(100|cap|truncat|silent).*--recent|paginat|one page",
         "summary": "--recent above 100 is silently capped to one REST page, so the aggregates describe a smaller sample than requested."
       }
     },
@@ -109,7 +109,7 @@
       "fixed_head": "aba057c41085d25898ab7363e212b6c07bcaaa4e",
       "finding": {
         "path": "scripts/review-chain-metrics.mjs",
-        "pattern": "generated|classifyComment|bot|signature|human",
+        "pattern": "generated|signature|not human|as human|human feedback",
         "summary": "A thread posted through a trusted account with the Claude Code signature counts as human feedback."
       }
     },
@@ -141,7 +141,7 @@
       "fixed_head": "ed26cdee9cde1515b863838abb2bc53dc2194ddb",
       "finding": {
         "path": "scripts/review-chain-metrics.mjs",
-        "pattern": "300|truncat|incomplete|compare",
+        "pattern": "\\b300\\b|truncat|files? limit",
         "summary": "The compare API lists at most 300 files; findings on omitted files are counted as untouched instead of unknown."
       }
     },
@@ -157,7 +157,7 @@
       "fixed_head": "31b07b43fb3f33f0b5b45fff243a7be54b5b18d9",
       "finding": {
         "path": "scripts/review-chain-metrics.mjs",
-        "pattern": "escap|pipe|delimiter|split",
+        "pattern": "\\bpipes?\\b|escaped|delimiter",
         "summary": "Evidence rows are split on every |, so an escaped pipe in a command shifts the Result column and drops the check from the tallies."
       }
     },
@@ -173,7 +173,7 @@
       "fixed_head": "ede56010b2625a38d72c4f2de0928120b52a16d8",
       "finding": {
         "path": "scripts/build-dashboard.mjs",
-        "pattern": "small|sample|too few|caveat|reviewed",
+        "pattern": "small.?sample|sample size|too few|caveat|SMALL_SAMPLE",
         "summary": "The overview shows review-chain rates with a single reviewed PR, without the small-sample caveat ADR-020 requires."
       }
     },
@@ -189,7 +189,7 @@
       "fixed_head": "2622e90b307498f8df42f0571905dc3b93f0f9aa",
       "finding": {
         "path": "scripts/gh-get-pr.mjs",
-        "pattern": "mergeable|list",
+        "pattern": "mergeable",
         "summary": "The REST branch lookup maps the pulls list response, which has no mergeable field, so a conflicting PR reads mergeable null and bypasses the guard."
       }
     }
