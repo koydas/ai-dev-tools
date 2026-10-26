@@ -223,6 +223,7 @@ Next step and what to pass forward
 | `report-path.mjs` | Resolve the review report path from PR JSON on stdin (`AI_DEV_TOOLS_REPORTS_DIR`, else `configs/paths.yaml`; refuses a non-ignored dir inside the working tree) | CLI / via commands |
 | `check-agent-output.mjs` | Check an agent output against the ADR-003 contract (`Status` first, `Handoff` last, valid status, `halts` flag); `--agent <name>` restricts Status to the values `agents/<name>.md` declares | CLI (grader for evals) |
 | `eval-grade.mjs` / `eval-run.mjs` | Grade a code-reviewer output against `evals/code-reviewer/cases.json` (real defects from merged PRs); the runner calls `claude -p` on isolated checkouts, manual only (see `evals/README.md`) | CLI / evals |
+| `eval-floor.mjs` | Check the eval cannot be made to pass by editing it: cases pinned, floor only tightens, committed results complete and consistent (`evals/README.md`) | `node --test` / CLI |
 | `mcp-server.mjs` | MCP server over stdio: the GitHub scripts as tools, commands as prompts, agents as resources; `post_comment` confirmed by elicitation (ADR-016) | MCP client |
 | `mcp-tools.mjs` | MCP tool registry — schemas, annotations, input validation → script argv | library |
 | `build-dashboard.mjs` | Build the static tool-health dashboard (one-screen overview, observations, evals, review-chain figures, `status.json`; same shell as the autonomous-dev-loop dashboard, ADR-021) from the `docs/observations/*.json` sidecars → `_site/`; deployed to GitHub Pages by `dashboard.yml` (ADR-019, ADR-020) | CLI / CI |

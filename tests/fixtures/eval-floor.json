@@ -1,0 +1,21 @@
+{
+  "comment": "Pinned by hand. Edit only to add a case (node scripts/eval-floor.mjs --print-pins) or to raise the floor; lowering, removing or changing is what this file exists to stop.",
+  "floor": {
+    "min_defect_rate": 0,
+    "min_fixed_rate": 1
+  },
+  "cases": {
+    "pr26-legacy-skills-link": "10e144ffcb4b660b",
+    "pr27-utf8-split-chunks": "c357903f7d017f84",
+    "pr31-redirect-downgrade": "dc23a30191447a02",
+    "pr36-test-pins-counts": "a1d8426b34c117d9",
+    "pr38-thread-path-dropped": "64af2b411cecc38e",
+    "pr38-recent-silent-cap": "3c807d5124d8c828",
+    "pr38-generated-counted-human": "97dbcd6fb3a78e82",
+    "pr38-rename-previous-filename": "6d273ddae9e8ce9e",
+    "pr38-compare-300-files": "e2187bb0bd82fc31",
+    "pr38-escaped-pipe": "8685d9ca2fa69a95",
+    "pr42-small-sample-rates": "9878be3bab79d83a",
+    "pr45-mergeable-null-on-branch": "d43665774a40f68b"
+  }
+}
