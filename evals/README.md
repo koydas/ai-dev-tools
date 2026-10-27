@@ -21,9 +21,12 @@ An output that breaks the ADR-003 contract (`scripts/check-agent-output.mjs`) ne
 
 ## Rules
 
-- A case is added in the PR that fixes a real misjudgment; `source` names the PR. Never copy a case's wording into an agent prompt.
-- A case is never removed, relabelled or loosened (`pattern`) to make a run pass; a wrong label is corrected in its own PR.
-- `tests/eval-grade.test.mjs` checks the schema and, when the commits are present, that the path is in the `base..head` diff and touched by the fix (CI checks out the full history for that).
+Enforced by `node scripts/eval-floor.mjs` (in `node --test` through `tests/eval-floor.test.mjs`, so in CI):
+
+- **Cases only grow and never change.** Every case is pinned in `tests/fixtures/eval-floor.json` (a fingerprint of its id, source, AC, three SHAs, finding path and pattern; `finding.summary` is prose and may be reworded). Adding a case = add it and its pin (`node scripts/eval-floor.mjs --print-pins`). Removing one, or editing a pinned field, fails. A label that is wrong on its own merits is corrected in its own PR, with the pin, never to make a run pass; a `pattern` is changed only after `--regrade` shows on the saved outputs that it mis-grades.
+- **The floor only tightens.** `evals/code-reviewer/floor.json` (`min_defect_rate`, `min_fixed_rate`) may not go below the floor pinned in the same fixture. Raise both together when a change improves the agent.
+- **The committed results are evidence.** The newest `evals/results/*.json` (latest `generated` timestamp, not file name; a file that is not valid JSON or has no `generated` is itself a violation) must cover every case in both variants, hold no errored run and no denied tool call, carry a `summary` equal to the one recomputed from its runs, and meet the floor. A PR that adds a case therefore re-runs the eval (~0.1 USD per run) and commits the new file.
+- **A production misjudgment becomes a case, in the PR that fixes it.** A wrong verdict or a missed bug seen on a real PR gets a case reproducing it (`source` names the PR; real SHAs; the finding as the reviewer should have raised it). If no fix is planned yet, open an issue labelled `eval-case` naming the input and the expected outcome. A case is never copied into an agent prompt.
 
 ## Running
 
