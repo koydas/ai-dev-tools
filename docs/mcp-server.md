@@ -85,7 +85,7 @@ Every tool takes a JSON object; unknown properties are rejected. `repo` is alway
 
 `get_pr`'s `ref` accepts `42`, `#42`, `owner/repo#42` or a PR URL. `normalize_pr` maps a PR fetched through REST or the GitHub MCP server (`pull_request_read` → `get`) to the field names `get_pr` emits ([ADR-010](adr/ADR-010-github-mcp-fallback-transport.md)).
 
-`get_check_runs` takes a SHA only. `--merge-base` of the CLI script depends on the local checkout and is not exposed.
+`get_check_runs` takes a SHA only. `--merge-base` of the CLI script (local `git merge-base`, or the compare API with `--head`) is not exposed.
 
 Results are the scripts' JSON, as text. Their `source` field (`graphql`, `rest`, `rest+ccr`) says which transport answered.
 

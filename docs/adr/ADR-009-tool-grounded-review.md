@@ -26,8 +26,8 @@ The result is a mandatory **Evidence** table (`PASS` / `FAIL` / `N/A` / `NOT_RUN
 
 `PRE_EXISTING` marks a failure that the base branch's CI already had. It stays visible in the report but does not block: a red base must not hold every PR hostage, and silently ignoring it would hide it from the human gate. The proof comes from the command, not the agent (ADR-007: scripts own external I/O):
 
-- The base is the **merge-base** of HEAD with the base branch (`origin/<baseRefName>` for `/pr-review`, the default branch from `configs/git.yaml` otherwise) — the commit the change actually diverged from, not the moving tip.
-- `scripts/gh-get-check-runs.mjs --merge-base [<ref>]` resolves it with `git merge-base` and returns that commit's check runs (`{ sha, check_runs: [{ name, status, conclusion, html_url }] }`). The four review commands pass it to the agent as input.
+- The base is the **merge-base** of HEAD with the base branch (`<baseRefName>` and the PR head for `/pr-review`, the default branch from `configs/git.yaml` otherwise) — the commit the change actually diverged from, not the moving tip.
+- `scripts/gh-get-check-runs.mjs --merge-base [<ref>]` resolves it with `git merge-base` and returns that commit's check runs (`{ sha, check_runs: [{ name, status, conclusion, html_url }] }`). The four review commands pass it to the agent as input. `/pr-review` adds `--head <headRefOid>` (with `<baseRefName>` as the ref): the merge-base is then resolved in `--repo` through the compare API, since the working directory may be another repository than the PR's ([#23](https://github.com/koydas/ai-dev-tools/issues/23)).
 - The agent marks a row `PRE_EXISTING` only when a check run in that input runs the same check and concluded `failure` / `timed_out`, citing its URL. Without the input, without a matching run, or in doubt: `FAIL`. The agent never calls GitHub and never checks out the base.
 
 Safety boundaries:

@@ -15,7 +15,7 @@ Produces a consistent, structured review for any PR — covering correctness, ri
 /pr-review https://github.com/owner/repo/pull/42
 ```
 
-With `owner/repo#42` or a URL, every script receives `--repo owner/repo`, so the PR can belong to another repository than the working directory. Checks still run only from a clone of that repository checked out at the PR head; otherwise every Evidence row is `NOT_RUN`.
+With `owner/repo#42` or a URL, every script receives `--repo owner/repo`, so the PR can belong to another repository than the working directory — base CI results included (merge-base resolved through the API). Checks still run only from a clone of that repository checked out at the PR head; otherwise every Evidence row is `NOT_RUN`.
 
 ## What it does
 
@@ -36,7 +36,7 @@ Comment posted: https://github.com/owner/repo/pull/42#issuecomment-…
 
 Report sections:
 - Summary of changes
-- Evidence — each check with command, source, and `PASS` / `FAIL` / `N/A` / `NOT_RUN` / `PRE_EXISTING` (fails on the base branch too, per the CI results of the merge-base fetched by `scripts/gh-get-check-runs.mjs`)
+- Evidence — each check with command, source, and `PASS` / `FAIL` / `N/A` / `NOT_RUN` / `PRE_EXISTING` (fails on the base branch too, per the CI results of the merge-base fetched by `scripts/gh-get-check-runs.mjs`; the merge-base of the PR head and its base branch is resolved in the PR's repository through the compare API, so it is right whatever the working directory)
 - Risk assessment (Low / Medium / High)
 - Blocking issues (must fix before merge)
 - Non-blocking suggestions
