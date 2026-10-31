@@ -104,6 +104,13 @@ test('compareEndpoint: targets --repo, or the current repo placeholder', () => {
   assert.equal(compareEndpoint('main', SHA), `repos/{owner}/{repo}/compare/main...${SHA}`);
 });
 
+test('compareEndpoint: percent-encodes #, % and ? in the branch, keeps the / separators', () => {
+  assert.equal(compareEndpoint('release/1.x', SHA, 'o/r'), `repos/o/r/compare/release/1.x...${SHA}`);
+  assert.equal(compareEndpoint('release/#23', SHA, 'o/r'), `repos/o/r/compare/release/%2323...${SHA}`);
+  assert.equal(compareEndpoint('fix/100%', SHA, 'o/r'), `repos/o/r/compare/fix/100%25...${SHA}`);
+  assert.equal(compareEndpoint('what?', SHA, 'o/r'), `repos/o/r/compare/what%3F...${SHA}`);
+});
+
 test('parseMergeBaseSha: the full SHA printed by --jq, trailing newline ignored', () => {
   assert.equal(parseMergeBaseSha(`${SHA}\n`), SHA);
 });

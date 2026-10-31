@@ -89,9 +89,11 @@ export function resolveMergeBase(ref) {
 }
 
 // Pure: compare endpoint whose `merge_base_commit` is the merge-base of <base> and <head> in <repo>.
-// `{owner}/{repo}` is filled in by gh from the current repo when no repo is given.
+// `{owner}/{repo}` is filled in by gh from the current repo when no repo is given. Each segment of the
+// branch is percent-encoded: a git branch may hold `#`, `%` or `?`, which would otherwise cut the path.
 export function compareEndpoint(base, head, repo) {
-  return `repos/${repo ?? '{owner}/{repo}'}/compare/${base}...${head}`;
+  const branch = base.split('/').map(encodeURIComponent).join('/');
+  return `repos/${repo ?? '{owner}/{repo}'}/compare/${branch}...${head}`;
 }
 
 // Pure: output of `gh api <compare> --jq .merge_base_commit.sha` → the SHA. Throws on anything else.
