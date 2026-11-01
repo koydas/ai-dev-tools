@@ -8,7 +8,8 @@ A Claude Code toolbox for AI-native development — commands, agents, rules, and
 agents/     Specialized subagents — one responsibility, explicit I/O, chainable
 commands/   Slash commands — pipeline definitions only, no logic
 rules/      Stack conventions — Claude Code rules, path-scoped via `paths:` frontmatter
-scripts/    External I/O — GitHub API, file ops (ESM .mjs, Node ≥ 20); mcp-server.mjs exposes them over MCP
+hooks/      Plugin-only, opt-in PreToolUse context routing (ADR-022)
+scripts/    External I/O — GitHub API, file ops, context extraction (ESM .mjs, Node ≥ 20); mcp-server.mjs exposes them over MCP
 configs/    Versioned non-secret configuration (git.yaml, …)
 tests/      Node unit tests (node --test), zero external dependencies
 workspace/  Config files deployed to developer root during onboarding
@@ -74,6 +75,10 @@ Not to be confused with an Agent Skill (`<name>/SKILL.md` with `name` + `descrip
 ### Script
 
 Create `scripts/your-script.mjs` (ESM). Scripts own all external I/O — GitHub API calls, file system operations, token auditing. No external dependencies unless strictly necessary ([ADR-007](docs/adr/ADR-007-nodejs-scripts-for-io.md)).
+
+## Context Shunt (opt-in)
+
+The plugin ships `hooks/hooks.json`: when `AI_DEV_TOOLS_CONTEXT_SHUNT=1` and `ANTHROPIC_API_KEY` are present, eligible large whole-file `Read` calls are redirected toward `/context-read` (ADR-022 and ADR-023). The hook never calls the API, modifies code or approves permissions. The worker may send selected repository source to Anthropic; enable only where that transfer is authorized. Source quotes are verified, not their conclusions. Full guide: `docs/context-shunt.md`.
 
 ## Configuration
 
