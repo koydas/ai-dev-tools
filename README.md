@@ -80,6 +80,28 @@ After pulling new versions: `node ~/dev/ai-dev-tools/scripts/sync-claude.mjs`.
 
 ---
 
+
+## Context Shunt (optional)
+
+**Reduce primary-model context pressure without weakening existing review gates.** A Claude Code `PreToolUse` hook detects eligible whole-file reads over 350 lines and suggests a focused extraction through Claude Haiku 5.5. The worker returns compact, **locally verified path/line/quote citations**; for exact edits and reviews, use targeted `Read` and executed checks as usual.
+
+```mermaid
+flowchart LR
+    A["Claude Code: Read large file"] --> B{"Opt-in hook / eligible?"}
+    B -->|No| C["Ordinary Read"]
+    B -->|Yes| D["Deny whole-file Read"]
+    D --> E["/context-read: Haiku extraction"]
+    E --> F{"Local citation verification"}
+    F -->|Valid| G["Small evidence result"]
+    F -->|Invalid| H["Targeted Read fallback"]
+```
+
+The feature is **disabled by default**. To opt in when the plugin is installed, set `AI_DEV_TOOLS_CONTEXT_SHUNT=1` and `ANTHROPIC_API_KEY` in your local environment (not Git). This sends selected source files to Anthropic and uses separate API billing; a Claude Code subscription alone is not an API key. `/ai-dev-tools:context-read` is also available manually. The hook intercepts `Read` only, and **no overall cost savings are claimed without a comparable benchmark**.
+
+**Details:** [Architecture, security and evaluation](docs/context-shunt.md) · [Command reference](docs/commands/context-read.md) · [ADR-022](docs/adr/ADR-022-context-shunt.md) · [ADR-023](docs/adr/ADR-023-context-shunt-evidence.md).
+
+---
+
 ## How it works
 
 The human is a **gate**, not a relay. Commands orchestrate agents; agents do one thing well; rules shape how they reason.
@@ -163,6 +185,7 @@ Next step and what to pass forward
 | `/issue-notes [id]` | — | Generate technical overview, post as GitHub issue comment |
 | `/demo-prep` | — | Feature description → slide-ready sprint demo content |
 | `/token-audit [days]` | — | Audit Claude Code token usage — trends, model breakdown, command adoption |
+| `/context-read "question" --paths <file...>` | — | Opt-in low-cost source extraction with locally verified citations ([docs](docs/context-shunt.md)) |
 | `/loop-insights [--finding <key>] [--source <url\|path>]` | `loop-analyst` | Draft proposals for changes to an autonomous-dev-loop deployment from its published `findings.json` — read-only, nothing posted or created ([ADR-017](docs/adr/ADR-017-loop-insights-command.md)) |
 | `/check-releases` | — | List repos with main changes not yet in a release |
 | `/sync-ai-dev-tools` | — | Sync commands and agents from this repo to `~/.claude` |
@@ -214,6 +237,7 @@ Next step and what to pass forward
 | `gh-post-comment.mjs` | Post a comment to a GitHub issue or PR (REST API, body from argument or stdin) | CLI / via `/pr-review`, `/issue-notes` |
 | `gh-my-issues.mjs` | List issues assigned to current user — GraphQL, else REST (ADR-011) | CLI |
 | `token-audit.mjs` | Aggregate token usage from Claude Code JSONL session files | via `/token-audit` |
+| `context-shunt-policy.mjs` / `context-shunt-hook.mjs` / `context-shunt.mjs` | Read eligibility, optional Claude Code hook, and bounded Anthropic extraction | plugin hook / `/context-read` |
 | `update-repos.mjs` | Pull latest on all configured repos | CLI |
 | `list-files.mjs` | Recursive numbered file listing | CLI |
 | `checkpoint.mjs` | Write / read / list pipeline checkpoints, namespaced by repo and issue | via `/issue-code-generation`, `/resume` |
@@ -238,7 +262,8 @@ ai-dev-tools/
 ├── agents/       Specialized subagents — explicit I/O contracts, chainable
 ├── commands/     Slash commands — type /name in Claude Code to invoke a pipeline
 ├── rules/        Stack conventions — Claude Code rules, path-scoped
-├── scripts/      GitHub CLI, token auditing, sync utilities
+├── hooks/        Optional Claude Code PreToolUse routing (opt-in)
+├── scripts/      GitHub CLI, token auditing, context extraction, sync utilities
 ├── docs/
 │   ├── adr/          Architecture Decision Records
 │   ├── commands/     Reference docs for each slash command
