@@ -8,7 +8,7 @@ export const enabled = (env = process.env) =>
 
 export function sensitivePath(path) {
   return path.split(/[\\/]/).some((part) =>
-    /^(?:\.git|\.ssh|node_modules|\.env(?:\..*)?|\.npmrc|\.pypirc|secrets?|credentials?|id_rsa|id_ed25519)$/i.test(part)
+    /^(?:\.git|\.ssh|node_modules|\.env(?:\..*)?|\.npmrc|\.pypirc|secrets?(?:[._-].*)?|credentials?(?:[._-].*)?|id_rsa|id_ed25519)$/i.test(part)
     || /\.(?:pem|key|p12|pfx|kdbx)$/i.test(part));
 }
 
