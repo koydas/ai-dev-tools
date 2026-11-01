@@ -87,6 +87,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     process.stderr.write(JSON.stringify({ event: 'context_shunt.complete',
       model: result.model, ...result.usage, ...result.proxy }) + '\n');
   } catch (error) {
+    process.stderr.write(JSON.stringify({ event: 'context_shunt.error', error_type: error.name || 'Error' }) + '\n');
     process.stderr.write('Context Shunt failed: ' + error.message + '. Use targeted Read as fallback.\n');
     process.exitCode = 1;
   }
