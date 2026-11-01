@@ -44,7 +44,8 @@ test('file boundary rejects traversal, secrets, symlinks, binary, and oversized 
   }
   assert.throws(() => loadSources(['large.js'], { cwd, maxBytes: 10 }));
   assert.throws(() => loadSources(['small.js', 'small.js'], { cwd }));
-  assert.equal(sensitivePath('config/secrets.yaml'), false); // No content-based secret detection.
+  assert.equal(sensitivePath('config/secrets.yaml'), true);
+  assert.equal(sensitivePath('config/secretary.ts'), false); // Still no content-based secret detection.
   assert.equal(sensitivePath('config/secrets/token'), true);
 });
 
