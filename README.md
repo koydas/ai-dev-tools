@@ -102,6 +102,23 @@ The feature is **disabled by default**. To opt in when the plugin is installed, 
 
 ---
 
+### A/B benchmark (opt-in, no automatic API calls)
+
+The [Context Shunt A/B benchmark](docs/context-shunt-benchmark.md) tests the **same primary model** with direct full-source input versus a Haiku-extracted, verified evidence summary. Both branches use the same code questions and snapshots; the report separates worker and primary provider tokens, full API cost (if a verified price table is supplied), latency, failures, and a **weak, explicitly labeled phrase-scoring proxy**. It does not claim to measure the Claude Code subscription or session context.
+
+```mermaid
+flowchart LR
+    Q["Same question and source"] --> D["Direct: full source to Sonnet"]
+    Q --> W["Shunt: Haiku source extraction"]
+    W --> P["Verified evidence to Sonnet"]
+    D --> M["Cost, usage, latency, proxy quality"]
+    P --> M
+```
+
+Preview an offline plan with `node scripts/context-shunt-benchmark.mjs`; paid calls require `--live`, `AI_DEV_TOOLS_CONTEXT_SHUNT=1` and `ANTHROPIC_API_KEY`. No benchmarks run in CI. See [ADR-024](docs/adr/ADR-024-context-shunt-benchmark.md) for the experimental protocol and limitations.
+
+---
+
 ## How it works
 
 The human is a **gate**, not a relay. Commands orchestrate agents; agents do one thing well; rules shape how they reason.
@@ -238,6 +255,7 @@ Next step and what to pass forward
 | `gh-my-issues.mjs` | List issues assigned to current user — GraphQL, else REST (ADR-011) | CLI |
 | `token-audit.mjs` | Aggregate token usage from Claude Code JSONL session files | via `/token-audit` |
 | `context-shunt-policy.mjs` / `context-shunt-hook.mjs` / `context-shunt.mjs` | Read eligibility, optional Claude Code hook, and bounded Anthropic extraction | plugin hook / `/context-read` |
+| `context-shunt-benchmark.mjs` / `context-shunt-benchmark-core.mjs` | Explicit, paired direct-versus-shunt A/B benchmark; no API calls without `--live` and opt-in | local CLI only ([docs](docs/context-shunt-benchmark.md)) |
 | `update-repos.mjs` | Pull latest on all configured repos | CLI |
 | `list-files.mjs` | Recursive numbered file listing | CLI |
 | `checkpoint.mjs` | Write / read / list pipeline checkpoints, namespaced by repo and issue | via `/issue-code-generation`, `/resume` |
