@@ -82,7 +82,7 @@ Treatment total = worker input + output + cache terms
                 + primary input + output + cache terms
 ```
 
-Use `--pricing path/to/local-pricing.json` with `--live`. If pricing or billable usage is incomplete, the affected cost stays `null`. On failed calls, provider charges may be unknown and should not be inferred to be zero. This experiment observes **API response usage**, not an independently reconciled invoice. Context-char proxies from the separate shunt command are not billable tokens.
+Use `--pricing path/to/local-pricing.json` with `--live`. If pricing or billable usage is incomplete, the affected cost stays `null`. An API response may consume billable tokens **even when its answer is rejected** (invalid JSON, bad citations, or truncated output). The benchmark records provider-reported model and usage **before** answer validation, then prices that observed usage if all required rates are available. An HTTP/network failure without a readable metered response remains **unknown** (`null`), never free. This experiment observes **API response usage**, not an independently reconciled invoice. Context-char proxies from the separate shunt command are not billable tokens.
 
 ## Result interpretation
 
@@ -95,6 +95,7 @@ Use `--pricing path/to/local-pricing.json` with `--live`. If pricing or billable
 | `summary.*.primary_input_tokens` | Primary API input token consumption, not Claude Code UI context size |
 | `latency_ms` | Wall-clock time for the arm, inclusive of network and worker call |
 | `failure_type` | Error class only; no raw API body or code text in report |
+| `calls[]` on failed arms | Keeps observed provider model/usage even if output validation failed; missing metadata remains null |
 
 **Success requires more than a numerical win:** high-quality human review of a representative sample, no increase in missed facts, and a repeatable reduction in total priced API cost without unacceptable latency. Do not generalize beyond this corpus or infer a measured benefit for Claude Code itself.
 
