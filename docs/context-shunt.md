@@ -102,6 +102,10 @@ The CLI emits an event on stderr with `event=context_shunt.complete`, `model`, a
 - For exact edits or PR reviews: use **`Read` with offset/limit** and maintain executed tests and reviewer quality gates.
 - The default hook intentionally does **not** block `Bash` whole-file reads. This is a performance optimization, not access control.
 
+## Reproducible A/B benchmark
+
+A [local, opt-in paired experiment](context-shunt-benchmark.md) implements the ADR-023 evaluation plan. It compares the same primary Anthropic model with direct sources versus a Haiku extract, verifies exact source citations in both arms, and reports billed usage where available. It requires explicit `--live` and an API key. It does **not** directly measure Claude Code session context or subscription cost; phrase scoring is a weak quality proxy, not semantic evaluation. See [ADR-024](adr/ADR-024-context-shunt-benchmark.md).
+
 ## Evaluation plan
 
 Run identical, fixed questions on a representative repository using (a) direct reads and (b) Context Shunt. Record:
