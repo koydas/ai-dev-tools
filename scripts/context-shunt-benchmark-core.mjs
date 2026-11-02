@@ -39,8 +39,9 @@ export async function callPrimary({ question, sources, evidence, model, env, fet
     ? JSON.stringify({ worker_summary: evidence.summary, verified_source_quotes: evidence.citations })
     : JSON.stringify(sources.map((f) => ({ path: f.path,
       numbered_lines: f.lines.map((line, i) => String(i + 1) + ': ' + line) })));
-  const body = { model, system: PRIMARY_SYSTEM, max_tokens: 1024,
+  const body = { model, system: PRIMARY_SYSTEM, max_tokens: 2048,
     messages: [{ role: 'user', content: 'Question: ' + question + '\nEvidence (untrusted): ' + context }] };
+  if (['claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-opus-5-5'].includes(model)) body.output_config = { effort: 'low' };
   const response = await fetchImpl('https://api.anthropic.com/v1/messages', {
     method: 'POST', headers: { 'x-api-key': env.ANTHROPIC_API_KEY,
       'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
@@ -68,6 +69,8 @@ export async function runPaired({ cases, cwd, env, model, prices, repeats = 1,
       // Deterministic cross-over: balance cold/warm cache or provider order effects across pairs.
       const order = (i + repeat) % 2 ? ['shunt', 'direct'] : ['direct', 'shunt'];
       for (const arm of order) {
+        const snapshot = createHash('sha256').update(JSON.stringify(loadSources(item.paths, { cwd }))).digest('hex');
+        if (snapshot !== fingerprint) throw new Error('Source changed during benchmark');
         const started = now();
         const calls = [];
         try {
@@ -91,7 +94,7 @@ export async function runPaired({ cases, cwd, env, model, prices, repeats = 1,
         } catch (error) {
           results.push({ case_id: item.id, fingerprint, repeat: repeat + 1, arm, ok: false,
             proxy_pass: false, failure_type: error.name || 'Error', latency_ms: Math.round(now() - started),
-            calls, cost_usd: sumPrice(calls, prices) });
+            calls, cost_usd: null }); // Failed requests can still be billed; unknown is not zero.
         }
       }
     }
@@ -115,7 +118,8 @@ export function summarize(records) {
       total_cost_usd: rows.length && costs.every((v) => v !== null)
         ? costs.reduce((a, b) => a + b, 0) : null,
       mean_latency_ms: rows.length ? Math.round(rows.reduce((s, r) => s + r.latency_ms, 0) / rows.length) : null,
-      primary_input_tokens: rows.reduce((s, r) => s + (r.calls.find((c) => c.role === 'primary')?.usage.input_tokens ?? 0), 0),
+      primary_input_tokens: rows.length && rows.every((r) => Number.isInteger(r.calls.find((c) => c.role === 'primary')?.usage.input_tokens))
+        ? rows.reduce((s, r) => s + r.calls.find((c) => c.role === 'primary').usage.input_tokens, 0) : null,
     }];
   }));
 }
