@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "description": "Representative, reproducible knowledge-extraction questions over ai-dev-tools. Run only on a checkout at a recorded commit.",
+  "cases": [
+    {
+      "id": "review-gates",
+      "question": "What exact evidence outcomes permit a code review to be marked DONE?",
+      "paths": [
+        "README.md"
+      ],
+      "must_include": [
+        "PASS",
+        "N/A",
+        "PRE_EXISTING"
+      ]
+    },
+    {
+      "id": "human-ownership",
+      "question": "After code generation, what operations remain explicitly controlled by a human?",
+      "paths": [
+        "README.md",
+        "CLAUDE.md"
+      ],
+      "must_include": [
+        "review",
+        "merge"
+      ]
+    },
+    {
+      "id": "shunt-verification",
+      "question": "How are delegated worker citations verified, and what happens when a citation is invalid?",
+      "paths": [
+        "scripts/context-shunt.mjs",
+        "docs/context-shunt.md"
+      ],
+      "must_include": [
+        "quote",
+        "line"
+      ]
+    }
+  ]
+}
