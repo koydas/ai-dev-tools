@@ -56,3 +56,4 @@ A PR that autonomous-dev-loop escalates (`needs-human`) is the entry point of Le
 | `fullstack-pilot` | `validate-change`, `github-artifacts`, `new-adr` | `docs/claude-code.md`, ADR-006 |
 | `agent-patterns` | `new-pattern` | `docs/claude-code.md` |
 | `koydas` | `site-change` | `docs/claude-code.md` |
+| `repo-orchestrator` | `new-adr` | `docs/claude-code.md`, ADR-0010 |
