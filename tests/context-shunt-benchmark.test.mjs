@@ -111,3 +111,97 @@ test('delegation failure remains a failed treatment arm, not a free success', as
   assert.equal(result.results.find((r) => r.arm === 'shunt').failure_type, 'Error');
   assert.ok(!JSON.stringify(result).includes('secret contents'));
 });
+
+
+test('billed primary responses retain usage even when answer JSON, citations or finish status fail', async (t) => {
+  const { cwd, cases } = fixture(t);
+  const prices = { models: {
+    'claude-sonnet-5-5': { input: 10, output: 20, cacheRead: 1, cacheWrite: 12 },
+    worker: { input: 1, output: 2, cacheRead: 0.1, cacheWrite: 1.2 },
+  } };
+  const workerFn = async () => ({
+    summary: 'ANSWER is 42.', citations: [{ path: 'sample.js', line: 1, quote: 'ANSWER = 42' }],
+    model: 'worker', usage: { input_tokens: 10, output_tokens: 2,
+      cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+  });
+  const failureModes = [
+    ['invalid-json', { stop_reason: 'end_turn', content: [{ type: 'text', text: '{not json' }] }],
+    ['invalid-citation', { stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify({
+      summary: 'The answer is 42.', citations: [{ path: 'sample.js', line: 1, quote: 'ANSWER = 43' }],
+    }) }] }],
+    ['truncated', { stop_reason: 'max_tokens', content: [{ type: 'text', text: '{}' }] }],
+  ];
+  for (const [mode, response] of failureModes) {
+    const result = await runPaired({ cases, cwd, model: 'claude-sonnet-5-5',
+      env: { ANTHROPIC_API_KEY: 'mock' }, prices, workerFn,
+      fetchImpl: async () => ({ ok: true, json: async () => ({
+        model: 'claude-sonnet-5-5',
+        usage: { input_tokens: 100, output_tokens: 20,
+          cache_read_input_tokens: 50, cache_creation_input_tokens: 10 },
+        ...response,
+      }) }),
+    });
+    for (const row of result.results) {
+      assert.equal(row.ok, false, mode + '/' + row.arm);
+      assert.equal(row.calls.at(-1).role, 'primary', mode);
+      assert.equal(row.calls.at(-1).usage.input_tokens, 100, mode);
+      assert.equal(row.calls.at(-1).usage.output_tokens, 20, mode);
+      assert.equal(row.calls.at(-1).usage.cache_read_input_tokens, 50, mode);
+      assert.equal(row.calls.at(-1).usage.cache_creation_input_tokens, 10, mode);
+      assert.ok(row.cost_usd > 0, mode);
+    }
+    assert.equal(result.summary.direct.primary_input_tokens, 100, mode);
+    assert.equal(result.summary.shunt.primary_input_tokens, 100, mode);
+    assert.ok(result.summary.shunt.total_cost_usd > result.summary.direct.total_cost_usd, mode);
+    assert.equal(result.summary.direct.completed, 0);
+    assert.equal(result.summary.shunt.completed, 0);
+    assert.ok(!JSON.stringify(result).includes('ANSWER = 43'));
+  }
+});
+
+test('billed worker validation errors retain usage; unknown request costs remain null', async (t) => {
+  const { cwd, cases } = fixture(t);
+  const env = { AI_DEV_TOOLS_CONTEXT_SHUNT: '1', ANTHROPIC_API_KEY: 'mock' };
+  const prices = { models: {
+    'claude-haiku-5-5': { input: 1, output: 2, cacheRead: 0, cacheWrite: 0 },
+    'claude-sonnet-5-5': { input: 10, output: 20, cacheRead: 0, cacheWrite: 0 },
+  } };
+  const good = JSON.stringify({ summary: 'The answer is 42',
+    citations: [{ path: 'sample.js', line: 1, quote: 'ANSWER = 42' }] });
+  const fetchImpl = async (_url, request) => {
+    const { model } = JSON.parse(request.body);
+    return { ok: true, json: async () => model === 'claude-haiku-5-5'
+      ? { model, stop_reason: 'end_turn',
+        usage: { input_tokens: 80, output_tokens: 15,
+          cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+        content: [{ type: 'text', text: JSON.stringify({
+          summary: 'Wrong quote', citations: [{ path: 'sample.js', line: 1, quote: 'ANSWER = 43' }],
+        }) }] }
+      : { model, stop_reason: 'end_turn', usage: {
+        input_tokens: 100, output_tokens: 12,
+        cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+        content: [{ type: 'text', text: good }] },
+    };
+  };
+  const result = await runPaired({ cases, cwd, model: 'claude-sonnet-5-5',
+    env, prices, fetchImpl });
+  const direct = result.results.find((r) => r.arm === 'direct');
+  const shunt = result.results.find((r) => r.arm === 'shunt');
+  assert.equal(direct.ok, true);
+  assert.equal(shunt.ok, false);
+  assert.equal(shunt.calls.length, 1); // Primary call never happens.
+  assert.equal(shunt.calls[0].role, 'worker');
+  assert.equal(shunt.calls[0].model, 'claude-haiku-5-5');
+  assert.equal(shunt.calls[0].usage.input_tokens, 80);
+  assert.ok(shunt.cost_usd > 0);
+  assert.equal(result.summary.shunt.primary_input_tokens, null);
+  assert.equal(result.summary.shunt.completed, 0);
+
+  const unknown = await runPaired({ cases, cwd, model: 'claude-sonnet-5-5', env, prices,
+    fetchImpl: async () => ({ ok: false, status: 429 }) });
+  assert.equal(unknown.results[0].cost_usd, null);
+  assert.equal(unknown.results[1].cost_usd, null);
+  assert.equal(unknown.results[0].calls[0].usage.input_tokens, null);
+  assert.equal(unknown.summary.direct.total_cost_usd, null);
+  assert.equal(unknown.summary.shunt.total_cost_usd, null);
+});
