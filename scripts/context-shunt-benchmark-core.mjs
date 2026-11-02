@@ -58,6 +58,38 @@ export async function callPrimary({ question, sources, evidence, model, env, fet
     usage: normalizeUsage(reply.usage), input_chars: body.messages[0].content.length };
 }
 
+// Capture provider metering as soon as a JSON response is read, before parsing or citation checks.
+// A failed validation must not erase known billed usage; absent HTTP usage remains unknown.
+async function meteredCall(role, execute, fetchImpl, now, calls) {
+  const started = now();
+  let observed, result, requestStarted = false;
+  const observedFetch = async (...args) => {
+    requestStarted = true;
+    const response = await fetchImpl(...args);
+    return {
+      ok: response.ok, status: response.status,
+      json: async () => {
+        const body = await response.json();
+        observed = { model: typeof body?.model === 'string' ? body.model : null,
+          usage: normalizeUsage(body?.usage) };
+        return body;
+      },
+    };
+  };
+  try {
+    result = await execute(observedFetch);
+    return result;
+  } finally {
+    // Offline injected test functions may return a result without using fetchImpl.
+    if (requestStarted || result) calls.push({
+      role, model: observed?.model ?? result?.model ?? null,
+      usage: observed?.usage ?? normalizeUsage(result?.usage),
+      latency_ms: Math.round(now() - started),
+      ...(role === 'primary' ? { input_chars: result?.input_chars ?? null } : {}),
+    });
+  }
+}
+
 export async function runPaired({ cases, cwd, env, model, prices, repeats = 1,
   workerFn = delegate, primaryFn = callPrimary, now = () => performance.now(), fetchImpl = fetch }) {
   const results = [];
@@ -76,25 +108,21 @@ export async function runPaired({ cases, cwd, env, model, prices, repeats = 1,
         try {
           let evidence;
           if (arm === 'shunt') {
-            const a = now();
-            const worker = await workerFn({ question: item.question, paths: item.paths,
-              cwd, env, fetchImpl });
-            calls.push({ role: 'worker', model: worker.model, usage: normalizeUsage(worker.usage),
-              latency_ms: Math.round(now() - a) });
+            const worker = await meteredCall('worker', (transport) => workerFn({
+              question: item.question, paths: item.paths, cwd, env, fetchImpl: transport,
+            }), fetchImpl, now, calls);
             evidence = { summary: worker.summary, citations: worker.citations };
           }
-          const a = now();
-          const primary = await primaryFn({ question: item.question, sources, evidence,
-            model, env, fetchImpl });
-          calls.push({ role: 'primary', model: primary.model, usage: normalizeUsage(primary.usage),
-            latency_ms: Math.round(now() - a), input_chars: primary.input_chars ?? null });
+          const primary = await meteredCall('primary', (transport) => primaryFn({
+            question: item.question, sources, evidence, model, env, fetchImpl: transport,
+          }), fetchImpl, now, calls);
           results.push({ case_id: item.id, fingerprint, repeat: repeat + 1, arm, ok: true,
             proxy_pass: score(primary.answer, item.must_include), latency_ms: Math.round(now() - started),
             calls, cost_usd: sumPrice(calls, prices) });
         } catch (error) {
           results.push({ case_id: item.id, fingerprint, repeat: repeat + 1, arm, ok: false,
             proxy_pass: false, failure_type: error.name || 'Error', latency_ms: Math.round(now() - started),
-            calls, cost_usd: null }); // Failed requests can still be billed; unknown is not zero.
+            calls, cost_usd: sumPrice(calls, prices) }); // Price observed usage, never guess missing charges.
         }
       }
     }
