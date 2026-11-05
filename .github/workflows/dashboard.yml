@@ -8,6 +8,7 @@ on:
     paths:
       - docs/observations/**
       - scripts/build-dashboard.mjs
+      - scripts/site-kit/**
       - .github/workflows/dashboard.yml
   workflow_dispatch:
 

@@ -65,3 +65,9 @@ test('renderers: an unknown site id is rejected by the header and the footer, na
     assert.throws(() => render('nope'), /site-kit: unknown site "nope"/);
   }
 });
+
+test('the dashboard workflow redeploys when only the vendored kit changes (it is a build input)', () => {
+  const wf = readFileSync(fileURLToPath(new URL('../.github/workflows/dashboard.yml', import.meta.url)), 'utf8');
+  assert.match(wf, /^ {6}- scripts\/site-kit\/\*\*$/m);
+  assert.match(wf, /^ {6}- scripts\/build-dashboard\.mjs$/m);
+});
