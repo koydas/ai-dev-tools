@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
+import { renderHeader, renderFooter } from '../scripts/site-kit/render.mjs';
 import { summarize, renderOverview, renderObservations, renderEvals } from '../scripts/build-dashboard.mjs';
 
 const DIR = fileURLToPath(new URL('../scripts/site-kit/', import.meta.url));
@@ -57,4 +58,10 @@ test('overview opens with the shared page header (the only h1); the other pages 
 
 test('the dashboard header sits below the sticky kit bar', () => {
   assert.match(pages()['index.html'], /header \{ position: sticky; top: var\(--sk-bar-h, 0px\);/);
+});
+
+test('renderers: an unknown site id is rejected by the header and the footer, naming the id', () => {
+  for (const render of [renderHeader, renderFooter]) {
+    assert.throws(() => render('nope'), /site-kit: unknown site "nope"/);
+  }
 });
