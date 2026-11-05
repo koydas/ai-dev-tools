@@ -115,6 +115,7 @@ node --test
 - **Agents / Commands — frontmatter**: agents carry `name` + `description`, commands `description` (+ `argument-hint`); without it an agent is not a registered subagent
 - **Agents / Commands — script paths**: always `node "${CLAUDE_PLUGIN_ROOT}/scripts/<name>.mjs"`, never `node scripts/…` — commands run from the consuming repo's working directory ([ADR-013](docs/adr/ADR-013-plugin-distribution-and-script-paths.md)); `tests/sync-claude.test.mjs` enforces it
 - **Plugin version**: bump `version` in `.claude-plugin/plugin.json` when a change to `commands/`, `agents/` or `scripts/` must reach plugin installs
+- **Dashboard shell**: `scripts/site-kit/` is a vendored copy of the shared site shell of koydas/koydas (`site-kit/`, ADR-0001): top bar with site switcher, footer, page header, tokens. Never edit it by hand (sync it with `kit.mjs sync --profile node`); `tests/site-kit.test.mjs` fails when the copy drifts from the version and hash in its `KIT.json`. A dashboard-only change: no plugin version bump.
 - **Commands delegate**: a command is a pipeline definition, never an implementation
 - **Human gates**: invocation (user types the command), review (`NEEDS_REVIEW` status), merge (no autonomous push to main)
 

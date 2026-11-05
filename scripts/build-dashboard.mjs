@@ -8,6 +8,7 @@
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { kitCss, renderFooter, renderHeader, renderPageHead } from './site-kit/render.mjs';
 
 export const SCHEMA_VERSION = 1;
 export const REPO_URL = 'https://github.com/koydas/ai-dev-tools';
@@ -186,7 +187,7 @@ export const STYLE = `
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
 a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
-header { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); }
+header { position: sticky; top: var(--sk-bar-h, 0px); z-index: 20; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); }
 .bar { max-width: 1120px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 6px 22px; flex-wrap: wrap; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 750; font-size: 16px; color: var(--ink); letter-spacing: -.3px; white-space: nowrap; }
 .brand-icon { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; color: #fff; background: linear-gradient(135deg,#8b5cf6,#6366f1); font-size: 16px; }
@@ -261,7 +262,7 @@ const formatChainValue = (kind, v) => (v === null ? 'n/a' : kind === 'rate' ? fo
 
 const pill = (tone, text) => `<span class="pill ${tone}">${e(text)}</span>`;
 
-function layout(current, model, bodyHtml) {
+function layout(current, model, bodyHtml, masthead = '') {
   const page = PAGES.find((p) => p.file === current);
   const link = (p, inner) => `<a href="${p.file}"${p.file === current ? ' aria-current="page"' : ''}>${inner}</a>`;
   const nav = PAGES.map((p) => link(p, e(p.label))).join('');
@@ -270,8 +271,10 @@ function layout(current, model, bodyHtml) {
   const tabs = PAGES.map((p) => link(p, `${icon(p.icon)}${e(p.label)}`)).join('') + `<a class="app-switch" href="${LOOP_DASHBOARD_URL}" title="autonomous-dev-loop dashboard">${icon('switch')}Loop</a>`;
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${e(page.title)} — ai-dev-tools</title><style>${STYLE}</style></head>
-<body><header><div class="bar">
+<title>${e(page.title)} — ai-dev-tools</title><style>${kitCss()}
+${STYLE}</style></head>
+<body>${renderHeader('ai-dev-tools')}
+${masthead}<header><div class="bar">
 <a class="brand" href="index.html"><span class="brand-icon" aria-hidden="true">⚒</span>AI Dev Tools</a>
 <nav aria-label="Pages">${nav}</nav>
 <span class="tools"><a href="${LOOP_DASHBOARD_URL}">Dev loop ⇄</a><a href="${REPO_URL}">Repository →</a></span>
@@ -279,6 +282,7 @@ function layout(current, model, bodyHtml) {
 <main>${bodyHtml}</main>
 <nav class="tabbar" aria-label="Pages">${tabs}</nav>
 <footer>Built from local observation reports of ${e(formatDate(model.date))}${model.source ? ` (<code>${e(model.source)}</code>)` : ''}. No aggregated history.</footer>
+${renderFooter('ai-dev-tools')}
 </body></html>
 `;
 }
@@ -309,12 +313,15 @@ export function renderOverview(m) {
         : REVIEW_CHAIN.filter((x) => x.kind === 'rate').map((x) => chip('evals.html#review-chain', 'neutral', `${x.label.toLowerCase()} ${formatChainValue(x.kind, rc.aggregate[x.key])}`)).join(''))
     : row('quality', 'evals.html', 'Quality · evals', 'Not instrumented', 'No eval history is recorded yet');
   return layout('index.html', m, `<section class="glance" aria-label="Tool health">
-<h1>Tool health</h1>
 <a class="g-status tone-${TONE[h.status]}" href="observations.html"><span class="mark" aria-hidden="true">${MARK[h.status]}</span><span><strong>${e(TITLE[h.status])}</strong><small>${e(h.headline)} · ${e(formatDate(m.date))}</small></span><span class="chevron" aria-hidden="true">›</span></a>
 ${row('tests', source, 'Tests', `${m.tests.passed} / ${m.tests.total}`, `${failing ? `${failing} failing` : 'All passing'} · latest observation ${formatDate(m.date)}`)}
 ${row('observations', 'observations.html', 'Observations', `${m.fixed} fixed`, `${m.others} other${m.others === 1 ? '' : 's'} not conclusive`, obsChips)}
 ${quality}
-</section>`);
+</section>`, renderPageHead({
+    eyebrow: 'AI Dev Tools · Dashboard',
+    title: 'Tool health',
+    lede: 'Tests, observations and review-chain quality of the Claude Code toolbox, from the latest local observation.',
+  }));
 }
 
 function evidenceCard(m) {
