@@ -3,14 +3,17 @@
 // comments, reviews and unresolved threads written by humans with a role on the repository
 // (OWNER / MEMBER / COLLABORATOR). Everything else is never applied: bots are counted, and
 // generated, untrusted and unknown items are listed so the caller can surface them (ADR-014).
-// Usage: node scripts/gh-get-pr-feedback.mjs <pr-number> [--repo <owner/repo>]
+// With --external-review (ADR-025) the unresolved thread roots of the reviewers allowlisted in
+// configs/reviewers.yaml are also returned, as claims to verify, and only on a PR whose author has a role.
+// Usage: node scripts/gh-get-pr-feedback.mjs <pr-number> [--repo <owner/repo>] [--external-review]
 // Node ≥ 20, requires `gh` CLI authenticated. Threads and resolution state come from
 // gh-get-pr-threads.mjs (GraphQL, else REST — ADR-011); author type (`user.type`) and role
 // (`author_association`) from REST, which both transports reach. The REST lists are fetched once
 // and reused by the REST fallback of gh-get-pr-threads.mjs.
 
 import { fileURLToPath } from 'node:url';
-import { restList, resolveRepo, exitOnUnknownFlag } from './gh-transport.mjs';
+import { gh, restList, resolveRepo, exitOnUnknownFlag } from './gh-transport.mjs';
+import { loadReviewersConfig } from './config.mjs';
 import { getPrThreads } from './gh-get-pr-threads.mjs';
 
 // Same trust rule as autonomous-dev-loop's isTrustedReviewComment (its ADR-0028): anyone can
@@ -27,10 +30,22 @@ const GENERATED_PATTERNS = [
   /<!--\s*[a-z][\w-]*\s+[\w-]+=[^>]*-->/, // machine marker, e.g. <!-- adl-review sha=… verdict=… -->
 ];
 
-// Pure: one comment → 'bot' | 'pr-review' | 'generated' | 'human' | 'untrusted' | 'unknown'.
-// Only 'pr-review' and 'human' are ever applied.
-export function classifyComment({ login = null, type = null, association = null, body = '' } = {}) {
+// A finding of the allowlisted reviewer: priority badge (P0–P3) on the first line of the comment.
+const FINDING_BADGE = /!\[(P[0-3]) Badge\]/;
+const stripBot = (login) => String(login ?? '').replace(/\[bot\]$/, '').toLowerCase();
+
+// Pure: is this author an allowlisted reviewer? The App type comes from REST, the login cannot be
+// taken by a commenter (a marker in a body can).
+export function isAllowlistedReviewer({ login = null, type = null } = {}, reviewers = []) {
+  return type === 'Bot' && !!login && reviewers.some((r) => r.type === type && stripBot(r.login) === stripBot(login));
+}
+
+// Pure: one comment → 'external-review' | 'bot' | 'pr-review' | 'generated' | 'human' | 'untrusted' | 'unknown'.
+// Only 'pr-review', 'human' and 'external-review' are ever passed on. 'external-review' needs a
+// non-empty `reviewers` allowlist (default: none, so the ADR-014 behaviour) and the finding marker.
+export function classifyComment({ login = null, type = null, association = null, body = '', reviewers = [] } = {}) {
   const text = body ?? '';
+  if (isAllowlistedReviewer({ login, type }, reviewers) && FINDING_BADGE.test(text)) return 'external-review';
   if (type === 'Bot' || /\[bot\]$/.test(login ?? '')) return 'bot';
   const trusted = TRUSTED_ASSOCIATIONS.includes(association);
   if (isPrReviewReport(text)) return trusted ? 'pr-review' : 'untrusted';
@@ -55,12 +70,44 @@ export function authorIndex(items) {
 }
 
 const NOT_APPLIED = ['generated', 'untrusted', 'unknown'];
+export const MAX_FINDING_BODY = 2000;
+
+// Pure: reviewer text → plain text. Images and HTML (comments included) removed, links reduced to
+// their label, bare URLs removed, capped at `max` characters.
+export function sanitizeFindingText(text, max = MAX_FINDING_BODY) {
+  const plain = String(text ?? '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/https?:\/\/\S+/g, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  return plain.length > max ? `${plain.slice(0, max)}…` : plain;
+}
+
+// Pure: the root comment of an allowlisted reviewer's thread → { priority, title, body }.
+export function parseFinding(body) {
+  const [first = '', ...rest] = String(body ?? '').split('\n');
+  return {
+    priority: first.match(FINDING_BADGE)?.[1] ?? null,
+    title: sanitizeFindingText(first.replace(/\*+/g, ''), 200),
+    body: sanitizeFindingText(rest.join('\n')),
+  };
+}
 
 // Pure: gh-get-pr-threads.mjs output + author index → the feedback /pr-fixer reads.
-export function selectFeedback(activity, index) {
+// `externalReview` ({ reviewers, prAuthorAssociation }) switches on the ADR-025 source; without it
+// the output is ADR-014's, `externalReview: null` aside. A PR whose author has no role gets none.
+export function selectFeedback(activity, index, externalReview = null) {
   if (!activity || !Array.isArray(activity.threads)) throw new Error('expected gh-get-pr-threads output with threads');
   if (!(index instanceof Map)) throw new Error('expected an author index (Map)');
-  const classify = (id, login, body) => classifyComment({ login, body, ...(id == null ? {} : index.get(String(id))) });
+  const skipped = !externalReview ? null
+    : TRUSTED_ASSOCIATIONS.includes(externalReview.prAuthorAssociation) ? null : 'pr_author_not_trusted';
+  const reviewers = externalReview && !skipped ? externalReview.reviewers ?? [] : [];
+  const findings = [];
+  const classify = (id, login, body) => classifyComment({ login, body, reviewers, ...(id == null ? {} : index.get(String(id))) });
   const excluded = { bot: 0 };
   const notApplied = { generated: [], untrusted: [], unknown: [] };
   const setAside = (cls, item) => {
@@ -95,26 +142,47 @@ export function selectFeedback(activity, index) {
     if (t.resolved === true) continue; // settled on GitHub
     const all = [{ id: t.id, author: t.author, body: t.body, createdAt: t.createdAt }, ...(t.replies ?? [])]
       .map((c, i) => ({ ...c, class: classify(c.id, c.author, c.body), root: i === 0 }));
+    // Only the root of the thread can be a finding; a reply by the reviewer is a receipt, set aside.
+    all.forEach((c) => { if (!c.root && c.class === 'external-review') c.class = 'bot'; });
+    const root = all[0];
+    if (root.class === 'external-review') {
+      findings.push({
+        id: root.id, threadId: t.threadId, path: t.path, line: t.line, outdated: t.outdated,
+        author: root.author, ...parseFinding(root.body),
+      });
+    }
     const requests = all.filter((c) => c.class === 'human' || c.class === 'pr-review');
     const located = (c) => ({ id: c.id, author: c.author, body: c.body, path: t.path, line: t.line });
     if (!requests.length) {
-      all.forEach((c) => setAside(c.class, located(c)));
+      all.filter((c) => c.class !== 'external-review').forEach((c) => setAside(c.class, located(c)));
       continue;
     }
     // Requests only, plus a bot root as the context a human answered; any other comment is set aside.
-    const kept = all.filter((c) => requests.includes(c) || (c.root && c.class === 'bot'));
+    const kept = all.filter((c) => requests.includes(c) || (c.root && (c.class === 'bot' || c.class === 'external-review')));
     all.filter((c) => !kept.includes(c)).forEach((c) => setAside(c.class, located(c)));
     threads.push({
       id: t.id, threadId: t.threadId, path: t.path, line: t.line, resolved: t.resolved, outdated: t.outdated,
-      comments: kept.map(({ root, ...c }) => c),
+      comments: kept.map(({ root, ...c }) => (c.class === 'external-review' ? { ...c, body: parseFinding(c.body).title } : c)), // the finding itself is in externalReview
     });
   }
 
   const latest = prReviews.sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt))).at(-1) ?? null;
-  return { source: activity.source ?? null, latestPrReview: latest, human: { comments, reviews, threads }, notApplied, excluded };
+  return {
+    source: activity.source ?? null, latestPrReview: latest, human: { comments, reviews, threads }, notApplied, excluded,
+    externalReview: externalReview ? { skipped, findings } : null,
+  };
 }
 
-export function getPrFeedback(prNumber, repo) {
+// Role of the PR's author, null when it cannot be read (fail closed: no external-review source).
+function prAuthorAssociation(base, prNumber) {
+  try {
+    return JSON.parse(gh(['api', `${base}/pulls/${prNumber}`])).author_association ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function getPrFeedback(prNumber, repo, { externalReview = false } = {}) {
   const ownerRepo = resolveRepo(repo);
   const base = `repos/${ownerRepo}`;
   const prefetched = {
@@ -123,14 +191,17 @@ export function getPrFeedback(prNumber, repo) {
     reviews: restList(`${base}/pulls/${prNumber}/reviews`),
   };
   const activity = getPrThreads(prNumber, ownerRepo, prefetched);
-  return selectFeedback(activity, authorIndex(Object.values(prefetched).flat()));
+  const external = externalReview
+    ? { reviewers: loadReviewersConfig(), prAuthorAssociation: prAuthorAssociation(base, prNumber) }
+    : null;
+  return selectFeedback(activity, authorIndex(Object.values(prefetched).flat()), external);
 }
 
-const USAGE = 'Usage: node scripts/gh-get-pr-feedback.mjs <pr-number> [--repo <owner/repo>]';
+const USAGE = 'Usage: node scripts/gh-get-pr-feedback.mjs <pr-number> [--repo <owner/repo>] [--external-review]';
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
-  exitOnUnknownFlag(args, { value: ['--repo'] }, USAGE);
+  exitOnUnknownFlag(args, { value: ['--repo'], bool: ['--external-review'] }, USAGE);
   const number = args.find((a) => /^\d+$/.test(a));
   const repoIdx = args.indexOf('--repo');
   const repo = repoIdx !== -1 ? args[repoIdx + 1] : undefined;
@@ -141,7 +212,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
 
   try {
-    console.log(JSON.stringify(getPrFeedback(number, repo), null, 2));
+    console.log(JSON.stringify(getPrFeedback(number, repo, { externalReview: args.includes('--external-review') }), null, 2));
   } catch (err) {
     console.error(`Error fetching feedback for PR #${number}:`, err.message);
     process.exit(1);

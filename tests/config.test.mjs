@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { loadGitConfig } from '../scripts/config.mjs';
+import { loadGitConfig, loadReviewersConfig, parseReviewers } from '../scripts/config.mjs';
 
 function tempFile(content) {
   const dir = mkdtempSync(join(tmpdir(), 'cfg-test-'));
@@ -52,5 +52,20 @@ describe('config', () => {
       const cfg = loadGitConfig(file);
       assert.equal(cfg.default_branch, 'main');
     } finally { cleanup(); }
+  });
+});
+
+describe('reviewers config (ADR-025)', () => {
+  test('parseReviewers: list entries with login and type; incomplete entries dropped', () => {
+    assert.deepEqual(
+      parseReviewers('# c\n- login: a[bot]\n  type: Bot # x\n- login: b\n- type: Bot\n'),
+      [{ login: 'a[bot]', type: 'Bot' }],
+    );
+    assert.deepEqual(parseReviewers(null), []);
+  });
+
+  test('missing file → empty allowlist (fail closed); shipped file lists the Codex App only', () => {
+    assert.deepEqual(loadReviewersConfig('/nonexistent/reviewers.yaml'), []);
+    assert.deepEqual(loadReviewersConfig(), [{ login: 'chatgpt-codex-connector[bot]', type: 'Bot' }]);
   });
 });

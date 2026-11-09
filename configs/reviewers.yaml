@@ -1,0 +1,5 @@
+# External reviewers whose unresolved review-thread findings /pr-fixer --external-review reads (ADR-025).
+# Non-secret. `login` is compared without a trailing [bot]; `type` must equal the REST user.type.
+# Any bot not listed stays `bot`: counted, never read.
+- login: chatgpt-codex-connector[bot]
+  type: Bot

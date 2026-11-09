@@ -1,7 +1,7 @@
-# ADR-022 — /pr-fixer Reads the Codex Review as Claims to Verify (Amends ADR-014 on Bots)
+# ADR-025 — /pr-fixer Reads the Codex Review as Claims to Verify (Amends ADR-014 on Bots)
 
-**Status:** Proposed  
-**Date:** 2026-10-25
+**Status:** Accepted  
+**Date:** 2026-10-25 (proposed as ADR-022, renumbered ADR-025 — 022 was taken by the context shunt; accepted 2026-11-09)
 
 ## Context
 
@@ -15,7 +15,7 @@ The data of 2026-10-24 (250 PRs of autonomous-dev-loop, 41 of this repository) s
 
 So the largest source of back-and-forth is the one source `/pr-fixer` is told to ignore. The reason ADR-014 gave is still true for a bot in general (anyone can install an app, and its text can be steered); it does not hold for one named reviewer the author chose to run on their own PRs.
 
-## Decision (proposed)
+## Decision
 
 1. **One more source, by allowlist.** `gh-get-pr-feedback.mjs` gains a class `external-review` for the comments of an allowlisted reviewer. The allowlist is a versioned, non-secret file in `configs/` (`reviewers.yaml`), one entry now: the GitHub App login `chatgpt-codex-connector[bot]` with `type: Bot`. A bot not on the list stays `bot` (counted in `excluded`, never read). The classification stays a pure, tested function; the `[bot]` login of an App cannot be taken by a commenter, unlike a marker in a body.
 2. **Only the root of an unresolved review thread**, carrying the reviewer's finding marker. Its replies, resolved threads, review summaries and receipts are not read.
@@ -23,7 +23,8 @@ So the largest source of back-and-forth is the one source `/pr-fixer` is told to
 4. **Bounded text.** Body capped (2,000 characters), links, images and HTML removed, before it is passed on.
 5. **Only on a PR whose author is trusted** (`OWNER` / `MEMBER` / `COLLABORATOR`). A PR from an outsider can steer what the reviewer writes through its own diff; such a PR gets no external-review source.
 6. **Opt-in at first**: `/pr-fixer --external-review`. The default stays ADR-014's two sources; it moves only if the figures below improve, in a later ADR.
-7. Nothing is posted and nothing is committed: `/pr-fixer` drafts one reply per thread for the human to post, as for human threads ([ADR-001](ADR-001-human-as-gate.md) unchanged).
+7. Nothing is posted and nothing is committed: `/pr-fixer` drafts one reply per thread for the human to post, as for human threads ([ADR-001](ADR-001-human-as-gate.md) unchanged). **Reply / resolve decision (2026-11-09):** kept human-posted. The reply-per-thread, resolve and `@Codex review` steps of a repository's `pr-review-workflow` stay manual after the human has committed; a gated `--post-replies` step is not added (it would be the first write of `/pr-fixer` to GitHub, and a reply naming a commit cannot exist before the human commits). Revisit in a later ADR if the measure below shows the manual step dominates.
+8. **Config format.** `configs/reviewers.yaml` is a list of `- login:` / `type:` entries; `login` is compared without a trailing `[bot]` (GraphQL omits it, REST keeps it) and `type` must equal the REST `user.type` of the comment author. A missing file means an empty allowlist (fail closed).
 
 ## Alternatives considered
 
