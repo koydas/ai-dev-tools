@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "currency": "USD",
+  "unit": "per_million_tokens",
+  "models": {},
+  "_note": "Insert current, verified provider list prices for primary and worker model: {\"input\":...,\"output\":...,\"cacheRead\":...,\"cacheWrite\":...}. No pricing defaults or assumed zero costs."
+}

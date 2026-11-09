@@ -80,6 +80,10 @@ Create `scripts/your-script.mjs` (ESM). Scripts own all external I/O — GitHub 
 
 The plugin ships `hooks/hooks.json`: when `AI_DEV_TOOLS_CONTEXT_SHUNT=1` and `ANTHROPIC_API_KEY` are present, eligible large whole-file `Read` calls are redirected toward `/context-read` (ADR-022 and ADR-023). The hook never calls the API, modifies code or approves permissions. The worker may send selected repository source to Anthropic; enable only where that transfer is authorized. Source quotes are verified, not their conclusions. Full guide: `docs/context-shunt.md`.
 
+## Context Shunt A/B benchmark
+
+`scripts/context-shunt-benchmark.mjs` implements an optional local paired test of direct source input versus low-cost delegated evidence for the same primary Anthropic model (ADR-024). Default invocation only shows an offline plan; `--live`, `AI_DEV_TOOLS_CONTEXT_SHUNT=1`, and `ANTHROPIC_API_KEY` are all required for paid API calls. CLI never prints source content; cost is unknown without verified prices and usage. Human quality review is necessary before rollout. Details: `docs/context-shunt-benchmark.md`.
+
 ## Configuration
 
 | File | Contents | Versioned |
