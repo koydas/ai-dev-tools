@@ -229,3 +229,12 @@ test('gh-get-pr-feedback CLI: --external-review is a known option', () => {
   assert.doesNotMatch(r.stderr, /unknown option/);
   assert.match(r.stderr, /\[--external-review\]/);
 });
+
+test('selectFeedback: finding and human thread share the root comment id, also when threadId is null (REST fallback)', () => {
+  const act = extActivity();
+  act.threads.forEach((t) => { t.threadId = null; });
+  const out = selectFeedback(act, extIndex, { reviewers: REVIEWERS, prAuthorAssociation: 'OWNER' });
+  const finding = out.externalReview.findings.find((f) => f.id === 27);
+  assert.equal(finding.threadId, null);
+  assert.deepEqual(out.human.threads.map((t) => t.id), [27], 'the root id links them; the unrelated finding (id 21) is not merged');
+});
