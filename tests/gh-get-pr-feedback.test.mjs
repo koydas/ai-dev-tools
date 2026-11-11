@@ -238,3 +238,11 @@ test('selectFeedback: finding and human thread share the root comment id, also w
   assert.equal(finding.threadId, null);
   assert.deepEqual(out.human.threads.map((t) => t.id), [27], 'the root id links them; the unrelated finding (id 21) is not merged');
 });
+
+test('sanitizeFindingText: code spans and fences keep their angle brackets, HTML outside code is still removed', () => {
+  assert.equal(sanitizeFindingText('With `min < value && value > max` and `Map<string, number>`'), 'With `min < value && value > max` and `Map<string, number>`');
+  assert.equal(sanitizeFindingText('```ts\nconst m: Map<string, number> = a < b ? x : y > z;\n```\n<b>bold</b> <!-- hidden -->'), '```ts\nconst m: Map<string, number> = a < b ? x : y > z;\n```\nbold');
+  assert.equal(sanitizeFindingText('a < b and c > d'), 'a < b and c > d', 'no tag shape: kept');
+  assert.equal(sanitizeFindingText('`[x](http://e/x)` and [y](http://e/y)'), '`[x](http://e/x)` and y', 'links reduced outside code only');
+  assert.equal(parseFinding('**![P1 Badge](u)  Use `a * b`, not `a ** b`**\n\nbody').title, 'Use `a * b`, not `a ** b`', 'asterisks inside code survive the title cleanup');
+});

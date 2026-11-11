@@ -72,15 +72,20 @@ export function authorIndex(items) {
 const NOT_APPLIED = ['generated', 'untrusted', 'unknown'];
 export const MAX_FINDING_BODY = 2000;
 
-// Pure: reviewer text → plain text. Images and HTML (comments included) removed, links reduced to
-// their label, bare URLs removed, capped at `max` characters.
+// Pure: reviewer text → plain text. Outside code (fenced blocks and inline spans, kept verbatim:
+// `a < b && c > d` and `Map<string, number>` are content), images and HTML (comments included) are
+// removed, links reduced to their label, bare URLs removed; capped at `max` characters.
 export function sanitizeFindingText(text, max = MAX_FINDING_BODY) {
-  const plain = String(text ?? '')
+  const strip = (t) => t
     .replace(/<!--[\s\S]*?-->/g, '')
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
-    .replace(/<[^>]*>/g, '')
+    .replace(/<\/?[a-zA-Z][^<>]*>/g, '')
     .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
-    .replace(/https?:\/\/\S+/g, '')
+    .replace(/https?:\/\/\S+/g, '');
+  const plain = String(text ?? '')
+    .split(/(```[\s\S]*?```|`[^`\n]*`)/)
+    .map((part, i) => (i % 2 ? part : strip(part)))
+    .join('')
     .replace(/[ \t]+\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
@@ -92,7 +97,7 @@ export function parseFinding(body) {
   const [first = '', ...rest] = String(body ?? '').split('\n');
   return {
     priority: first.match(FINDING_BADGE)?.[1] ?? null,
-    title: sanitizeFindingText(first.replace(/\*+/g, ''), 200),
+    title: sanitizeFindingText(first.replace(/^\s*\*\*|\*\*\s*$/g, ''), 200),
     body: sanitizeFindingText(rest.join('\n')),
   };
 }
