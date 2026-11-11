@@ -89,6 +89,7 @@ The plugin ships `hooks/hooks.json`: when `AI_DEV_TOOLS_CONTEXT_SHUNT=1` and `AN
 | File | Contents | Versioned |
 |---|---|---|
 | `configs/git.yaml` | Non-secret git settings (`default_branch`, `remote`) | Yes |
+| `configs/reviewers.yaml` | External reviewers `/pr-fixer --external-review` reads (ADR-025); read via `loadReviewersConfig()` | Yes |
 | `configs/paths.yaml` | Output locations (`reports_dir`); `AI_DEV_TOOLS_REPORTS_DIR` overrides it | Yes |
 | `.env` | Secrets (`gh_token`) | No — git-ignored |
 

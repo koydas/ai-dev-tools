@@ -1,6 +1,6 @@
 # ADR-014 — /pr-fixer Applies In-Scope Non-Blocking Findings, Nits Included
 
-**Status:** Accepted  
+**Status:** Accepted (bot exclusion amended for one allowlisted reviewer by [ADR-025](ADR-025-pr-fixer-reads-the-codex-review.md), opt-in)  
 **Date:** 2026-10-15
 
 ## Context
